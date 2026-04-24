@@ -7,18 +7,18 @@ import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { getProfile, uploadResume, updateProfile, buildFromInterview, callAgent, getRoadmap } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
-import { Upload, CheckCircle, Loader2, FileText, User, Sparkles, X, Plus, ShieldAlert, Lock, ArrowRight, BookOpen, ChevronRight, GraduationCap, Trophy, Github } from "lucide-react";
+import { Upload, CheckCircle, Loader2, FileText, User, Sparkles, X, Plus, ShieldAlert, Lock, ArrowRight, BookOpen, GraduationCap, Trophy, Github, Target, Map, PenLine, Hammer, TrendingUp, Unlock, Check, XCircle, Star, RotateCcw, ChevronRight } from "lucide-react";
 import { clsx } from "clsx";
 
 // ── Pipeline steps for the visual workflow diagram ─────────────────────────
 const PIPELINE = [
-  { id: "interests", label: "Interests", emoji: "🎯", desc: "What do you want to build?" },
-  { id: "roadmap",   label: "Roadmap",   emoji: "🗺️", desc: "AI-generated learning path" },
-  { id: "learn",     label: "Learn",     emoji: "📖", desc: "Study free resources" },
-  { id: "quiz",      label: "Quiz",      emoji: "✏️", desc: "Verify understanding" },
-  { id: "project",   label: "Project",   emoji: "🔨", desc: "Build portfolio work" },
-  { id: "github",    label: "GitHub",    emoji: "🐙", desc: "Submit & verify repo" },
-  { id: "score",     label: "Score ↑",   emoji: "🚀", desc: "Trust Score updated" },
+  { id: "interests", label: "Interests", Icon: Target,      desc: "What do you want to build?" },
+  { id: "roadmap",   label: "Roadmap",   Icon: Map,          desc: "AI-generated learning path" },
+  { id: "learn",     label: "Learn",     Icon: BookOpen,     desc: "Study free resources" },
+  { id: "quiz",      label: "Quiz",      Icon: PenLine,      desc: "Verify understanding" },
+  { id: "project",   label: "Project",   Icon: Hammer,       desc: "Build portfolio work" },
+  { id: "github",    label: "GitHub",    Icon: Github,       desc: "Submit & verify repo" },
+  { id: "score",     label: "Score ↑",   Icon: TrendingUp,   desc: "Trust Score updated" },
 ];
 
 // ── RestrictedBanner — interest capture + visual roadmap ──────────────────
@@ -140,6 +140,7 @@ function RestrictedBanner({ profile, onShowWizard, onProfileUpdate }: {
           <p className="text-xs font-black uppercase tracking-widest text-gray-500 mb-4">Your Path to Unlock</p>
           <div className="flex items-start gap-0 overflow-x-auto pb-2">
             {PIPELINE.map((step, i) => {
+              const { Icon } = step;
               const isActive = step.id === (roadmapData ? "learn" : "interests");
               const isDone = i < (roadmapData ? 2 : 0);
               return (
@@ -150,12 +151,12 @@ function RestrictedBanner({ profile, onShowWizard, onProfileUpdate }: {
                     !isDone && !isActive && "opacity-40"
                   )}>
                     <div className={clsx(
-                      "w-14 h-14 border-4 border-neo-black flex items-center justify-center text-2xl font-black mb-2 transition-all",
+                      "w-14 h-14 border-4 border-neo-black flex items-center justify-center mb-2 transition-all",
                       isDone ? "bg-green-400 shadow-[3px_3px_0_#111]" :
                       isActive ? "bg-yellow-400 shadow-[3px_3px_0_#facc15] animate-pulse" :
                       "bg-white"
                     )}>
-                      {step.emoji}
+                      <Icon size={22} strokeWidth={2.5} />
                     </div>
                     <p className="text-xs font-black uppercase leading-tight">{step.label}</p>
                     <p className="text-[10px] text-gray-500 font-medium leading-tight mt-0.5">{step.desc}</p>
@@ -218,10 +219,10 @@ function RestrictedBanner({ profile, onShowWizard, onProfileUpdate }: {
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex gap-3 flex-1">
                             <div className={clsx(
-                              "shrink-0 w-8 h-8 border-2 border-neo-black flex items-center justify-center text-sm font-black mt-0.5",
+                              "shrink-0 w-8 h-8 border-2 border-neo-black flex items-center justify-center mt-0.5",
                               done ? "bg-green-400" : locked ? "bg-gray-200" : "bg-yellow-400"
                             )}>
-                              {done ? "✓" : locked ? "🔒" : ci + 1}
+                              {done ? <Check size={14} strokeWidth={3} /> : locked ? <Lock size={14} strokeWidth={2.5} /> : <span className="text-sm font-black">{ci + 1}</span>}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="font-black text-sm uppercase">{ch.title}</p>
@@ -255,7 +256,7 @@ function RestrictedBanner({ profile, onShowWizard, onProfileUpdate }: {
                                 onClick={() => openQuiz(ch)}
                                 title="Take Quiz to unlock next chapter"
                                 className="flex items-center gap-1.5 bg-neo-black text-yellow-400 font-black uppercase text-[10px] px-3 py-1.5 border-2 border-neo-black shadow-[2px_2px_0_#facc15] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all">
-                                ✏️ Take Quiz
+                                <PenLine size={11} strokeWidth={2.5} /> Take Quiz
                               </button>
                             )}
                           </div>
@@ -413,33 +414,35 @@ function RestrictedBanner({ profile, onShowWizard, onProfileUpdate }: {
                   </div>
 
                   <p className={clsx(
-                    "text-2xl font-black uppercase mb-2",
+                    "text-2xl font-black uppercase mb-2 flex items-center justify-center gap-2",
                     quizResult.status === "PASS" ? "text-green-700" : "text-red-700"
                   )}>
-                    {quizResult.status === "PASS" ? "🎉 Chapter Unlocked!" : "❌ Not Quite"}
+                    {quizResult.status === "PASS"
+                      ? <><Trophy size={22} className="text-green-600" /> Chapter Unlocked!</>
+                      : <><XCircle size={22} className="text-red-500" /> Not Quite</>}
                   </p>
                   <p className="text-sm font-medium text-gray-700 mb-6">{quizResult.message}</p>
 
                   {quizResult.status === "PASS" ? (
                     <div className="space-y-3">
-                      <div className="bg-yellow-400 border-2 border-neo-black px-6 py-3 inline-block font-black text-neo-black uppercase">
-                        +8 Points Earned ✓
+                      <div className="bg-yellow-400 border-2 border-neo-black px-6 py-3 inline-flex items-center gap-2 font-black text-neo-black uppercase">
+                        <Check size={16} strokeWidth={3} /> +8 Points Earned
                       </div>
                       <p className="text-xs font-bold text-gray-600">Next chapter is now unlocked in your roadmap!</p>
                       <button onClick={closeQuiz}
-                        className="mt-2 bg-neo-black text-white font-black uppercase px-8 py-3 border-2 border-neo-black">
-                        Continue →
+                        className="mt-2 bg-neo-black text-white font-black uppercase px-8 py-3 border-2 border-neo-black flex items-center gap-2 mx-auto">
+                        Continue <ChevronRight size={16} />
                       </button>
                     </div>
                   ) : (
                     <div className="flex gap-3 justify-center">
                       <button onClick={() => { setQuizResult(null); setAnswers({}); }}
-                        className="bg-neo-black text-white font-black uppercase px-6 py-3 border-2 border-neo-black shadow-[3px_3px_0_#facc15] hover:shadow-none transition-all">
-                        Retry Quiz
+                        className="flex items-center gap-2 bg-neo-black text-white font-black uppercase px-6 py-3 border-2 border-neo-black shadow-[3px_3px_0_#facc15] hover:shadow-none transition-all">
+                        <RotateCcw size={14} /> Retry Quiz
                       </button>
                       <button onClick={closeQuiz}
-                        className="px-6 py-3 border-2 border-neo-black font-bold hover:bg-gray-100">
-                        Study More
+                        className="flex items-center gap-2 px-6 py-3 border-2 border-neo-black font-bold hover:bg-gray-100">
+                        <BookOpen size={14} /> Study More
                       </button>
                     </div>
                   )}
