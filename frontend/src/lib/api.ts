@@ -50,3 +50,15 @@ export const getCompanyNotifications = () => api.get("/api/company/notifications
 // ---- Learning Agent ----
 export const callAgent = (payload: object) => api.post("/api/learn/agent", payload);
 export const getRoadmap = () => api.get("/api/learn/roadmap");
+
+// ---- Professional Resume Builder ----
+export const getGithubRepos = (username: string) =>
+  api.get("/api/candidates/github/repos", { params: { username } });
+
+export const generateProfessionalResume = (data: {
+  github_username: string;
+  portfolio_url?: string;
+  job_title?: string;
+  company_name?: string;
+  job_description?: string;
+}) => api.post("/api/candidates/resume/build-professional", data);

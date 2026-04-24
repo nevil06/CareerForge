@@ -220,6 +220,113 @@ def optimize(payload: ResumeOptimizeRequest,
     return {"optimized_resume": optimized}
 
 
+@router.get("/github/repos")
+async def preview_github_repos(
+    username: str,
+    user: User = Depends(require_candidate),
+):
+    """
+    Preview a GitHub user's public repos before generating a resume.
+    Returns profile info + repo list (name, description, languages, stars, url).
+    """
+    from app.services.ai_service import fetch_github_enrichment
+    if not username.strip():
+        raise HTTPException(400, "GitHub username is required")
+    data = await fetch_github_enrichment(username.strip())
+    if not data:
+        raise HTTPException(404, f"GitHub user '{username}' not found or has no public repos")
+    # Return lightweight version for UI preview (no README content)
+    return {
+        "username":    data.get("username"),
+        "name":        data.get("name"),
+        "bio":         data.get("bio"),
+        "location":    data.get("location"),
+        "github_url":  data.get("github_url"),
+        "blog":        data.get("blog"),
+        "public_repos": data.get("public_repos", 0),
+        "repos": [
+            {
+                "name":      r["name"],
+                "description": r["description"],
+                "url":       r["url"],
+                "stars":     r["stars"],
+                "primary_language": r["primary_language"],
+                "languages": r["languages"],
+            }
+            for r in data.get("repos", [])
+        ]
+    }
+
+
+@router.post("/resume/build-professional")
+async def build_professional_resume(
+    payload: dict,
+    user: User = Depends(require_candidate),
+    db: Session = Depends(get_db)
+):
+    """
+    Build a master-level HTML resume grounded 100% in real GitHub data.
+    Only enhances what actually exists — no fabrication.
+    """
+    from app.services.ai_service import (
+        fetch_github_enrichment, fetch_portfolio_content,
+        generate_professional_html_resume
+    )
+    import asyncio
+
+    profile_obj = _get_or_404(user, db)
+
+    github_username = (payload.get("github_username") or payload.get("github_url") or "").strip()
+    portfolio_url   = (payload.get("portfolio_url") or "").strip()
+    job_title       = (payload.get("job_title") or "").strip()
+    company_name    = (payload.get("company_name") or "").strip()
+    job_desc        = (payload.get("job_description") or "").strip()
+
+    if not github_username:
+        raise HTTPException(400, "GitHub username is required to build a grounded resume")
+
+    async def _empty_str(): return ""
+
+    # Fetch GitHub (with full README + languages) and portfolio concurrently
+    github_data, portfolio_text = await asyncio.gather(
+        fetch_github_enrichment(github_username),
+        fetch_portfolio_content(portfolio_url) if portfolio_url else _empty_str(),
+    )
+
+    if not github_data.get("repos"):
+        raise HTTPException(422, f"No public repositories found for GitHub user '{github_username}'. Make sure the username is correct and the account is public.")
+
+    profile_dict = {
+        "full_name":        profile_obj.full_name,
+        "email":            getattr(user, "email", ""),
+        "phone":            profile_obj.phone or "",
+        "location":         profile_obj.location or "",
+        "headline":         profile_obj.headline or "",
+        "summary":          profile_obj.summary or "",
+        "skills":           profile_obj.skills or [],
+        "experience_years": profile_obj.experience_years or 0,
+        "experiences":      profile_obj.experiences or [],
+        "education":        profile_obj.education or [],
+    }
+
+    html = generate_professional_html_resume(
+        profile=profile_dict,
+        github_data=github_data,
+        portfolio_text=portfolio_text,
+        job_description=job_desc,
+        job_title=job_title,
+        company_name=company_name,
+    )
+
+    return {
+        "html": html,
+        "github_enriched": True,
+        "repos_used": len(github_data.get("repos", [])),
+        "portfolio_enriched": bool(portfolio_text),
+    }
+
+
+
 @router.post("/outreach")
 def outreach(payload: OutreachRequest,
              user: User = Depends(require_candidate),
@@ -248,6 +355,102 @@ def cover_letter(payload: CoverLetterRequest,
         )
     return {"cover_letter": letter}
 
+
+# ---------------------------------------------------------------------------
+# AI Application Package  (resume + email + cover letter in one shot)
+# ---------------------------------------------------------------------------
+
+@router.post("/apply/{job_id}")
+async def generate_apply_package(
+    job_id: int,
+    payload: dict,
+    user: User = Depends(require_candidate),
+    db: Session = Depends(get_db),
+):
+    """
+    Generates the full application package for a job:
+      1. Fetches GitHub repos (if github_username provided)
+      2. Generates: match analysis + cold email + cover letter (one GLM call)
+      3. Generates: professional HTML resume (second GLM call, parallel)
+    Returns all four artefacts in one response.
+    """
+    from app.services.ai_service import (
+        fetch_github_enrichment, generate_application_package,
+        generate_professional_html_resume
+    )
+    from app.models.job import Job
+    import asyncio
+
+    profile_obj = _get_or_404(user, db)
+
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(404, "Job not found")
+
+    github_username = (payload.get("github_username") or "").strip()
+    portfolio_url   = (payload.get("portfolio_url") or "").strip()
+
+    # Build profile dict
+    profile_dict = {
+        "full_name":        profile_obj.full_name,
+        "email":            getattr(user, "email", ""),
+        "phone":            profile_obj.phone or "",
+        "location":         profile_obj.location or "",
+        "headline":         profile_obj.headline or "",
+        "summary":          profile_obj.summary or "",
+        "skills":           profile_obj.skills or [],
+        "experience_years": profile_obj.experience_years or 0,
+        "experiences":      profile_obj.experiences or [],
+        "education":        profile_obj.education or [],
+    }
+
+    job_dict = {
+        "title":        job.title,
+        "company_name": job.company_name,
+        "location":     job.location or "Remote",
+        "description":  job.description or "",
+    }
+
+    # Fetch GitHub enrichment if username provided
+    async def _empty_dict(): return {}
+    async def _empty_str():  return ""
+
+    from app.services.ai_service import fetch_portfolio_content
+    github_data, portfolio_text = await asyncio.gather(
+        fetch_github_enrichment(github_username) if github_username else _empty_dict(),
+        fetch_portfolio_content(portfolio_url) if portfolio_url else _empty_str(),
+    )
+
+    # Run both GLM calls concurrently (text package + HTML resume)
+    import concurrent.futures, functools
+
+    def _gen_package():
+        return generate_application_package(profile_dict, job_dict, github_data)
+
+    def _gen_resume():
+        return generate_professional_html_resume(
+            profile=profile_dict,
+            github_data=github_data,
+            portfolio_text=portfolio_text,
+            job_description=job_dict["description"],
+            job_title=job_dict["title"],
+            company_name=job_dict["company_name"],
+        )
+
+    loop = asyncio.get_event_loop()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+        pkg_future    = loop.run_in_executor(pool, _gen_package)
+        resume_future = loop.run_in_executor(pool, _gen_resume)
+        pkg, resume_html = await asyncio.gather(pkg_future, resume_future)
+
+    return {
+        "summary":       pkg.get("summary", {}),
+        "cold_email":    pkg.get("cold_email", ""),
+        "cover_letter":  pkg.get("cover_letter", ""),
+        "resume_html":   resume_html,
+        "github_enriched": bool(github_data),
+        "repos_used":      len(github_data.get("repos", [])),
+    }
 
 # ---------------------------------------------------------------------------
 # AI Job Search Agent
@@ -448,6 +651,9 @@ def _send_match_digest_email(profile, matches, user_email: str):
     if not _s.BREVO_API_KEY:
         print("[email] BREVO_API_KEY not set — skipping email")
         return
+    if not _s.BREVO_SENDER_EMAIL:
+        print("[email] BREVO_SENDER_EMAIL not set — skipping email")
+        return
     if not user_email:
         print("[email] No recipient email — skipping")
         return
@@ -530,10 +736,16 @@ def _send_match_digest_email(profile, matches, user_email: str):
                 "subject": subject,
                 "htmlContent": html,
             },
-            headers={"api-key": _s.BREVO_API_KEY, "content-type": "application/json"},
+            headers={
+                "accept": "application/json",
+                "content-type": "application/json",
+                "api-key": _s.BREVO_API_KEY,
+            },
             timeout=15,
         )
-        print(f"[email] Brevo response: {resp.status_code} — {resp.text[:200]}")
+        if resp.status_code in (200, 201):
+            print(f"[email] ✓ Digest sent to {user_email} (status {resp.status_code})")
+        else:
+            print(f"[email] ✗ Brevo rejected email — status {resp.status_code}: {resp.text[:500]}")
     except Exception as e:
         print(f"[email] HTTP send failed: {e}")
-
