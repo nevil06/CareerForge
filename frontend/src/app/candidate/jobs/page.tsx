@@ -112,42 +112,42 @@ export default function JobsPage() {
             <p className="mb-4 text-sm font-bold text-stone-500">{jobs.length} jobs found</p>
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               {jobs.map((job) => (
-                <Card key={job.id} className="group flex flex-col overflow-hidden transition-all hover:-translate-y-1 hover:shadow-leaf">
+                <Card key={job.id} className="group flex flex-col h-full overflow-hidden transition-all hover:-translate-y-1 hover:shadow-leaf">
                   <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-display text-xl font-bold leading-tight text-soil">{job.title}</h4>
-                    <Badge variant={job.source === "external" ? "warning" : "default"} className="ml-2 flex-shrink-0">
+                    <h4 className="font-display text-xl font-bold leading-tight text-soil pr-2">{job.title}</h4>
+                    <Badge variant={job.source === "external" ? "warning" : "default"} className="flex-shrink-0">
                       {job.source}
                     </Badge>
                   </div>
 
-                  <div className="mb-1 flex items-center gap-1 text-sm font-semibold text-stone-500">
-                    <Building2 size={13} className="flex-shrink-0" />
+                  <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-stone-500">
+                    <Building2 size={14} className="flex-shrink-0" />
                     <span className="truncate">{job.company_name}</span>
                   </div>
 
                   {job.location && (
-                    <div className="mb-3 flex items-center gap-1 text-sm font-semibold text-stone-500">
-                      <MapPin size={13} className="flex-shrink-0" />
+                    <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-stone-500">
+                      <MapPin size={14} className="flex-shrink-0" />
                       <span className="truncate">{job.location}</span>
                     </div>
                   )}
 
                   {job.salary_min && (
-                    <p className="mb-2 text-xs font-bold text-moss">
+                    <p className="mb-3 text-sm font-bold text-moss">
                       ${(job.salary_min / 1000).toFixed(0)}k
                       {job.salary_max ? ` – $${(job.salary_max / 1000).toFixed(0)}k` : "+"}
                     </p>
                   )}
 
                   {job.required_skills?.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-3">
+                    <div className="flex flex-wrap gap-1.5 mb-4">
                       {job.required_skills.slice(0, 5).map((s: string) => (
                         <Badge key={s}>{s}</Badge>
                       ))}
                     </div>
                   )}
 
-                  <div className="mt-auto flex gap-2">
+                  <div className="mt-auto pt-2 flex gap-2">
                     <Button size="sm" variant="outline" className="flex-1 gap-1.5"
                       onClick={() => window.location.href = `/candidate/apply/${job.id}`}>
                       <Sparkles size={13} /> Apply with AI

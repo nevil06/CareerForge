@@ -39,20 +39,20 @@ export default function MatchCard({ match }: { match: Match }) {
   const variant = pct >= 70 ? "success" : pct >= 50 ? "warning" : "default";
 
   return (
-    <Card className="group relative overflow-hidden transition-all hover:translate-y-[-4px] hover:translate-x-[-4px] hover:shadow-[8px_8px_0px_0px_rgba(17,24,39,1)]">
+    <Card className="group relative overflow-hidden transition-all hover:translate-y-[-4px] hover:translate-x-[-4px] hover:shadow-[8px_8px_0px_0px_rgba(17,24,39,1)] flex flex-col h-full">
       <div className="flex items-start justify-between mb-4">
-        <div>
-          <h4 className="font-display text-xl font-black uppercase text-neo-black">{match.job_title}</h4>
+        <div className="pr-2">
+          <h4 className="font-display text-xl font-black uppercase text-neo-black leading-tight">{match.job_title}</h4>
           <div className="mt-1 flex items-center gap-2 text-sm font-bold text-neo-dark-grey uppercase">
-            <Building2 size={16} strokeWidth={2.5} />{match.company_name}
+            <Building2 size={16} strokeWidth={2.5} className="flex-shrink-0" />{match.company_name}
           </div>
         </div>
-        <Badge variant={variant} className="text-sm font-bold px-3 py-1">
+        <Badge variant={variant} className="text-sm font-bold px-3 py-1 flex-shrink-0">
           {pct}% match
         </Badge>
       </div>
 
-      <div className="space-y-2 mb-4">
+      <div className="space-y-3 mb-4">
         <ScoreBar label="Skills" value={match.score_skill} />
         <ScoreBar label="Experience" value={match.score_experience} />
       </div>
@@ -79,24 +79,25 @@ export default function MatchCard({ match }: { match: Match }) {
         </div>
       )}
 
-      {match.application_link && (
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" className="flex-1 gap-2"
+      <div className="mt-auto pt-2">
+        {match.application_link ? (
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" className="flex-1 gap-2"
+              onClick={() => window.location.href = `/candidate/apply/${match.job_id}`}>
+              <Sparkles size={14} /> Apply with AI
+            </Button>
+            <Button size="sm" variant="ghost" className="gap-2"
+              onClick={() => window.open(match.application_link, "_blank")}>
+              <ExternalLink size={14} />
+            </Button>
+          </div>
+        ) : (
+          <Button size="sm" variant="outline" className="w-full gap-2"
             onClick={() => window.location.href = `/candidate/apply/${match.job_id}`}>
             <Sparkles size={14} /> Apply with AI
           </Button>
-          <Button size="sm" variant="ghost" className="gap-2"
-            onClick={() => window.open(match.application_link, "_blank")}>
-            <ExternalLink size={14} />
-          </Button>
-        </div>
-      )}
-      {!match.application_link && (
-        <Button size="sm" variant="outline" className="w-full gap-2"
-          onClick={() => window.location.href = `/candidate/apply/${match.job_id}`}>
-          <Sparkles size={14} /> Apply with AI
-        </Button>
-      )}
+        )}
+      </div>
     </Card>
   );
 }

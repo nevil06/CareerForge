@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { clsx } from "clsx";
 import { useAuthStore } from "@/lib/store";
 import {
-  LayoutDashboard, Briefcase, User, Bell, LogOut, Sparkles, Sprout,
+  LayoutDashboard, Briefcase, User, Bell, LogOut, Sparkles, Anvil,
 } from "lucide-react";
 
 const candidateLinks = [
@@ -52,7 +52,7 @@ export default function Sidebar() {
       <div className="px-6 py-6 border-b-4 border-neo-black bg-neo-grey text-neo-black">
         <div className="flex items-center gap-3">
           <div className="grid h-12 w-12 place-items-center border-2 border-neo-black bg-neo-white text-neo-black shadow-[2px_2px_0px_0px_rgba(17,24,39,1)]">
-            <Sprout size={24} strokeWidth={2.5} />
+            <Anvil size={24} strokeWidth={2.5} />
           </div>
           <div>
             <span className="font-display text-xl font-black text-neo-black uppercase tracking-tight">Carrier-Forge</span>

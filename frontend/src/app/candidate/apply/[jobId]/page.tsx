@@ -186,7 +186,20 @@ export default function ApplyPage() {
 
             <div className="flex gap-3 mt-4">
               <Button variant="outline" className="flex-1 gap-2"
-                onClick={() => window.open(`http://localhost:8001/api/candidates/apply/${jobId}/resume.pdf`, "_blank")}>
+                onClick={async () => {
+                  try {
+                    const res = await api.get(`/api/candidates/apply/${jobId}/resume.pdf`, { responseType: 'blob' });
+                    const url = window.URL.createObjectURL(new Blob([res.data]));
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.setAttribute('download', 'Tailored_Resume.pdf');
+                    document.body.appendChild(link);
+                    link.click();
+                    link.parentNode?.removeChild(link);
+                  } catch (e) {
+                    alert("Failed to download resume.");
+                  }
+                }}>
                 <Download size={16} /> Download Resume PDF
               </Button>
               <Button variant="outline" onClick={() => setPkg(null)}>

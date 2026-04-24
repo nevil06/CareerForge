@@ -25,4 +25,5 @@ body {
 .shadow-leaf { @apply shadow-neo-sm; }
 .font-display { font-family: inherit; }
 .organic-panel { @apply border-4 border-neo-black bg-neo-white shadow-neo-lg; }
+.organic-input { @apply w-full border-4 border-neo-black bg-neo-white px-4 py-3 text-neo-black shadow-[4px_4px_0px_0px_rgba(17,24,39,1)] focus:outline-none focus:-translate-y-1 focus:-translate-x-1 focus:shadow-[8px_8px_0px_0px_rgba(17,24,39,1)] transition-all resize-y; }
 
