@@ -21,13 +21,23 @@ class CandidateProfileCreate(BaseModel):
     phone: Optional[str] = None
     location: Optional[str] = None
     summary: Optional[str] = None
-    skills: List[str] = []
+    skills: Optional[List[str]] = []
     experience_years: float = 0
-    experiences: List[ExperienceItem] = []
-    education: List[EducationItem] = []
-    preferred_roles: List[str] = []
-    languages: List[str] = []
-
+    experiences: Optional[List[ExperienceItem]] = []
+    education: Optional[List[EducationItem]] = []
+    preferred_roles: Optional[List[str]] = []
+    languages: Optional[List[str]] = []
+    
+    # Trust Engine Profile
+    careerforge_score: Optional[float] = 0
+    trust_level: Optional[str] = "Low"
+    headline: Optional[str] = None
+    github_username: Optional[str] = None
+    missing_proof: Optional[List[Any]] = []
+    projects: Optional[List[Any]] = []
+    verified_skills: Optional[List[Any]] = []
+    strength_tags: Optional[List[str]] = []
+    roadmap: Optional[dict] = {}
 
 class CandidateProfileOut(CandidateProfileCreate):
     id: int

@@ -6,6 +6,8 @@ import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import { listJobs } from "@/lib/api";
 import api from "@/lib/api";
+import { useAuthStore } from "@/lib/store";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { MapPin, Building2, ExternalLink, Search, Sparkles, Loader2 } from "lucide-react";
 
 export default function JobsPage() {
@@ -25,7 +27,23 @@ export default function JobsPage() {
     }
   };
 
-  useEffect(() => { fetchJobs(); }, []);
+  const { token } = useAuthStore();
+  
+  useEffect(() => {
+    if (!token) return;
+    import("@/lib/api").then(({ getProfile }) => {
+      getProfile().then((p) => {
+        if (p.data.careerforge_score < 70) {
+          window.location.href = "/candidate/profile";
+        }
+      }).catch((e) => {
+        if (e.response?.status === 404) {
+          window.location.href = "/candidate/profile";
+        }
+      });
+    });
+    fetchJobs();
+  }, [token]);
 
   const handleSearch = () => fetchJobs(q);
 
@@ -94,9 +112,15 @@ export default function JobsPage() {
 
         {/* Results */}
         {loading ? (
-          <div className="flex items-center justify-center gap-3 py-20 text-stone-500">
-            <Loader2 className="animate-spin" size={20} />
-            Loading jobs...
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="flex flex-col gap-3 h-[250px] bg-neo-white border-4 border-neo-black shadow-neo-sm p-4">
+                <Skeleton className="h-6 w-2/3" />
+                <Skeleton className="h-4 w-1/3 mb-2" />
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-12 w-full mt-auto" />
+              </div>
+            ))}
           </div>
         ) : jobs.length === 0 ? (
           <Card className="py-16 text-center">

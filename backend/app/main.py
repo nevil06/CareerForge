@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import Base, engine
-from app.api import auth, candidates, jobs, company
+from app.api import candidates, jobs, company
 
 # Create all tables on startup
 Base.metadata.create_all(bind=engine)
@@ -17,7 +17,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router)
 app.include_router(candidates.router)
 app.include_router(jobs.router)
 app.include_router(company.router)

@@ -31,6 +31,9 @@ function LoginContent() {
 
   // Check if already logged in
   useEffect(() => {
+    // Skip auto-redirect if actively registering or submitting
+    if (isRegister || isSubmitting) return;
+    
     const checkSession = async () => {
       const { supabase } = await import("@/lib/supabase");
       const { data: { session } } = await supabase.auth.getSession();
@@ -40,7 +43,7 @@ function LoginContent() {
       }
     };
     checkSession();
-  }, [router]);
+  }, [router, isRegister, isSubmitting]);
 
   const onSubmit = async (data: FormData) => {
     setError("");
@@ -75,7 +78,10 @@ function LoginContent() {
         }
       }
 
-      const path = actualRole === "company" ? "/company/dashboard" : "/candidate/dashboard";
+      let path = actualRole === "company" ? "/company/dashboard" : "/candidate/dashboard";
+      if (isRegister && actualRole === "candidate") {
+        path = "/candidate/profile";
+      }
       router.push(path);
     } catch (e: any) {
       setError(e.message || "Authentication failed. Please check your credentials.");

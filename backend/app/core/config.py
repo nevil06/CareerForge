@@ -29,8 +29,13 @@ class Settings(BaseSettings):
     # CORS
     ALLOWED_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3001", "http://172.28.48.1:3000", "http://172.28.48.1:3001"]
 
+    # Supabase Auth
+    SUPABASE_URL: str = ""
+    SUPABASE_JWT_SECRET: str = ""
+
     class Config:
         env_file = ".env"
+        extra = "ignore"
 
 
 settings = Settings()

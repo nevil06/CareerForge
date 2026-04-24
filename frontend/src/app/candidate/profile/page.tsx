@@ -6,7 +6,8 @@ import { Card, CardTitle } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { getProfile, uploadResume, updateProfile } from "@/lib/api";
-import { Upload, CheckCircle, Loader2, FileText, User, Sparkles, X, Plus } from "lucide-react";
+import { useAuthStore } from "@/lib/store";
+import { Upload, CheckCircle, Loader2, FileText, User, Sparkles, X, Plus, ShieldAlert, Lock, ArrowRight } from "lucide-react";
 import { clsx } from "clsx";
 
 type Step = "idle" | "uploading" | "extracting" | "parsing" | "saving" | "done" | "error";
@@ -67,14 +68,16 @@ export default function ProfilePage() {
     setNewSkill("");
   };
 
+  const { token } = useAuthStore();
   useEffect(() => {
+    if (!token) return;
     getProfile().then((r) => {
       if (r.data) {
         setProfile(r.data);
         setIsEditing(false);
       }
     }).catch(() => {});
-  }, []);
+  }, [token]);
 
   const onDrop = useCallback(async (files: File[]) => {
     if (!files[0]) return;
@@ -128,6 +131,44 @@ export default function ProfilePage() {
           title="My Profile"
           description="Upload a resume and let the agent extract the structured profile that powers your matches."
         />
+
+        {/* Access Restricted Banner / Roadmap */}
+        {profile && profile.careerforge_score < 70 && (
+          <div className="mb-6 p-6 border-4 border-neo-black bg-red-100 shadow-[4px_4px_0px_0px_rgba(17,24,39,1)]">
+            <div className="flex items-start gap-4">
+              <div className="bg-red-600 text-white p-3 border-2 border-neo-black mt-1">
+                <ShieldAlert size={28} />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-2xl font-black uppercase text-red-700 mb-2 flex items-center gap-2">
+                  <Lock size={20} /> Access Restricted
+                </h2>
+                <p className="text-neo-black font-bold text-lg mb-4">
+                  Trust Score: <span className="text-red-600">{profile.careerforge_score} / 100</span>
+                </p>
+                <div className="bg-white border-2 border-neo-black p-4 mb-4">
+                  <p className="font-bold text-neo-black text-sm italic">
+                    "{profile.roadmap?.direct_message || "Your resume lacks verifiable proof or GitHub projects. We require a higher trust score to unlock the platform."}"
+                  </p>
+                </div>
+                
+                {profile.roadmap?.action_steps && profile.roadmap.action_steps.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-widest text-red-800 mb-3">Roadmap to Unlock</h3>
+                    <ul className="space-y-3">
+                      {profile.roadmap.action_steps.map((step: string, i: number) => (
+                        <li key={i} className="flex gap-3 text-neo-black font-semibold bg-white p-3 border-2 border-neo-black">
+                          <ArrowRight className="text-red-500 shrink-0 mt-0.5" size={18} />
+                          {step}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Resume Upload */}
         {(!profile || isEditing) && (

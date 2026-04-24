@@ -25,6 +25,17 @@ class CandidateProfile(Base):
     raw_resume_text = Column(Text)
     embedding = Column(JSON)
 
+    # Trust Engine Profile
+    careerforge_score = Column(Float, default=0)
+    trust_level = Column(String(50), default="Low")
+    headline = Column(String(255))
+    github_username = Column(String(255))
+    missing_proof = Column(JSON, default=list)
+    projects = Column(JSON, default=list)
+    verified_skills = Column(JSON, default=list)
+    strength_tags = Column(JSON, default=list)
+    roadmap = Column(JSON, default=dict)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
