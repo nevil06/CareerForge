@@ -310,7 +310,7 @@ export default function ApplyPage() {
                     </div>
                   </div>
                   <div className="border-4 border-neo-black shadow-[3px_3px_0_#111]">
-                    <iframe ref={iframeRef} srcDoc={pkg.resume_html} className="w-full h-[700px] bg-white" title="Resume" sandbox="allow-same-origin allow-scripts" />
+                    <iframe ref={iframeRef} srcDoc={pkg.resume_html} className="w-full h-[700px] bg-white" title="Resume" sandbox="allow-same-origin allow-scripts allow-modals" />
                   </div>
                 </div>
               </Collapsible>
