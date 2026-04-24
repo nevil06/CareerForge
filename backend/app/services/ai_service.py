@@ -377,10 +377,11 @@ Chapter Title: {chapter_title}
 Concepts covered: {', '.join(concepts)}
 
 Rules:
-- 5-8 questions
+- Generate EXACTLY 10 questions
 - Test REAL understanding, not just definitions
 - 4 options per question, only 1 correct
-- Questions should be practical ("Which of these would you use to...")
+- Mix of practical ("Which of these would you use to...") and conceptual questions
+- Vary difficulty: 3 easy, 5 medium, 2 hard
 
 Return STRICT JSON:
 {{
@@ -402,15 +403,15 @@ Return STRICT JSON:
 
 
 def agent_evaluate_quiz(quiz_score: float) -> dict:
-    """Pure logic — no AI call needed."""
-    passed = quiz_score >= 70
+    """Pure logic — no AI call needed. Pass threshold = 80%."""
+    passed = quiz_score >= 80
     return {
         "status": "PASS" if passed else "FAIL",
         "next_step": "generate_project" if passed else "retry_quiz",
         "message": (
-            f"Great work! You scored {quiz_score:.0f}%. You've unlocked the project challenge."
+            f"Excellent! You scored {quiz_score:.0f}%. You've unlocked the project challenge."
             if passed else
-            f"You scored {quiz_score:.0f}%. You need 70% to unlock the project. Review the concepts and try again."
+            f"You scored {quiz_score:.0f}%. You need 80% to pass (8/10 correct). Review the concepts and try again."
         )
     }
 

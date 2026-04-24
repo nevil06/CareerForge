@@ -33,6 +33,13 @@ function RestrictedBanner({ profile, onShowWizard, onProfileUpdate }: {
   const [roadmapData, setRoadmapData] = useState<any>(null);
   const [loadingRoadmap, setLoadingRoadmap] = useState(true);
 
+  // ── Quiz state ──────────────────────────────────────────────────────────
+  const [quizChapter, setQuizChapter] = useState<any>(null);
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [quizResult, setQuizResult] = useState<any>(null);
+
   // Try to load existing roadmap on mount
   useEffect(() => {
     getRoadmap()
@@ -57,6 +64,52 @@ function RestrictedBanner({ profile, onShowWizard, onProfileUpdate }: {
     } catch (e) { console.error(e); }
     finally { setGenerating(false); }
   };
+
+  // ── Open quiz for a chapter ─────────────────────────────────────────────
+  const openQuiz = async (chapter: any) => {
+    setQuizChapter(chapter);
+    setQuizResult(null);
+    setAnswers({});
+    setQuizLoading(true);
+    try {
+      const res = await callAgent({
+        action: "generate_quiz",
+        chapter_id: chapter.id,
+        chapter_title: chapter.title,
+        concepts: chapter.concepts || [],
+      });
+      setQuestions(res.data.questions || []);
+    } catch { setQuestions([]); }
+    finally { setQuizLoading(false); }
+  };
+
+  const submitQuiz = async () => {
+    const total = questions.length;
+    const correct = questions.filter(q => answers[q.id] === q.correct_answer).length;
+    const score = Math.round((correct / total) * 100);
+    const res = await callAgent({
+      action: "evaluate_quiz",
+      chapter_id: quizChapter.id,
+      chapter_title: quizChapter.title,
+      quiz_score: score,
+    });
+    setQuizResult({ ...res.data, score, correct, total });
+    // If passed, refresh roadmap to show unlocked next chapter
+    if (res.data.status === "PASS") {
+      try {
+        const r = await getRoadmap();
+        setRoadmapData(r.data);
+      } catch {}
+    }
+  };
+
+  const closeQuiz = () => {
+    setQuizChapter(null);
+    setQuestions([]);
+    setAnswers({});
+    setQuizResult(null);
+  };
+
 
   // Count total chapters and completed ones
   const allChapters = roadmapData?.roadmap?.flatMap((l: any) => l.chapters) ?? [];
@@ -194,9 +247,17 @@ function RestrictedBanner({ profile, onShowWizard, onProfileUpdate }: {
                               )}
                             </div>
                           </div>
-                          <div className="shrink-0 text-right">
+                          <div className="shrink-0 flex flex-col items-end gap-2">
                             <p className="text-xs font-black text-yellow-700">+{ch.project_points}pts</p>
-                            {done && <Trophy size={18} className="text-green-600 mt-1 ml-auto" />}
+                            {done && <Trophy size={18} className="text-green-600" />}
+                            {!locked && !done && (
+                              <button
+                                onClick={() => openQuiz(ch)}
+                                title="Take Quiz to unlock next chapter"
+                                className="flex items-center gap-1.5 bg-neo-black text-yellow-400 font-black uppercase text-[10px] px-3 py-1.5 border-2 border-neo-black shadow-[2px_2px_0_#facc15] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all">
+                                ✏️ Take Quiz
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -259,6 +320,131 @@ function RestrictedBanner({ profile, onShowWizard, onProfileUpdate }: {
                 </button>
                 <button onClick={() => setShowInterestModal(false)} className="px-4 py-3 border-2 border-neo-black font-bold hover:bg-gray-100">Cancel</button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Quiz Modal ── */}
+      {quizChapter && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="bg-white border-4 border-neo-black shadow-[8px_8px_0_#111] w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+
+            {/* Header */}
+            <div className="flex items-center justify-between bg-neo-black text-white p-5">
+              <div>
+                <p className="text-xs text-yellow-400 font-black uppercase tracking-widest">Chapter Quiz — 10 Questions</p>
+                <h2 className="text-lg font-black uppercase">{quizChapter.title}</h2>
+                <p className="text-xs text-gray-400 font-medium">Score 80% or above (8/10) to unlock the next chapter</p>
+              </div>
+              <button onClick={closeQuiz} className="text-gray-400 hover:text-white"><X size={22} /></button>
+            </div>
+
+            <div className="p-6">
+              {/* Loading */}
+              {quizLoading && (
+                <div className="flex flex-col items-center justify-center py-16 gap-4">
+                  <Loader2 className="animate-spin text-neo-black" size={36} />
+                  <p className="text-sm font-black uppercase">Generating 10 Questions…</p>
+                </div>
+              )}
+
+              {/* Questions */}
+              {!quizLoading && questions.length > 0 && !quizResult && (
+                <div className="space-y-5">
+                  {/* Progress dots */}
+                  <div className="flex gap-1 flex-wrap mb-4">
+                    {questions.map((_, i) => (
+                      <div key={i} className={clsx(
+                        "w-6 h-6 border-2 border-neo-black text-[10px] font-black flex items-center justify-center transition-all",
+                        answers[questions[i].id] ? "bg-yellow-400" : "bg-white"
+                      )}>{i + 1}</div>
+                    ))}
+                    <span className="ml-2 text-xs font-bold text-gray-500 self-center">
+                      {Object.keys(answers).length}/10 answered
+                    </span>
+                  </div>
+
+                  {questions.map((q: any, qi: number) => (
+                    <div key={q.id} className="border-4 border-neo-black p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className={clsx(
+                          "w-7 h-7 border-2 border-neo-black text-xs font-black flex items-center justify-center shrink-0",
+                          answers[q.id] ? "bg-yellow-400" : "bg-white"
+                        )}>{qi + 1}</span>
+                        <p className="font-black text-sm">{q.question}</p>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 pl-9">
+                        {q.options.map((opt: string) => (
+                          <button key={opt} onClick={() => setAnswers(prev => ({ ...prev, [q.id]: opt }))}
+                            className={clsx(
+                              "text-left text-sm font-medium px-4 py-2.5 border-2 transition-all",
+                              answers[q.id] === opt
+                                ? "border-neo-black bg-yellow-100 font-bold shadow-[2px_2px_0_#111]"
+                                : "border-gray-300 hover:border-neo-black hover:bg-gray-50"
+                            )}>{opt}</button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    onClick={submitQuiz}
+                    disabled={Object.keys(answers).length < questions.length}
+                    className="w-full bg-neo-black text-yellow-400 font-black uppercase py-4 border-2 border-neo-black shadow-[4px_4px_0_#facc15] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all disabled:opacity-40 disabled:pointer-events-none">
+                    Submit Quiz ({Object.keys(answers).length}/10 answered) →
+                  </button>
+                </div>
+              )}
+
+              {/* Result */}
+              {quizResult && (
+                <div className={clsx(
+                  "border-4 p-8 text-center",
+                  quizResult.status === "PASS" ? "border-green-500 bg-green-50" : "border-red-400 bg-red-50"
+                )}>
+                  {/* Score ring */}
+                  <div className={clsx(
+                    "w-28 h-28 border-8 mx-auto mb-4 flex flex-col items-center justify-center",
+                    quizResult.status === "PASS" ? "border-green-500" : "border-red-400"
+                  )}>
+                    <p className="text-4xl font-black leading-none">{quizResult.score}%</p>
+                    <p className="text-xs font-bold text-gray-500">{quizResult.correct}/{quizResult.total}</p>
+                  </div>
+
+                  <p className={clsx(
+                    "text-2xl font-black uppercase mb-2",
+                    quizResult.status === "PASS" ? "text-green-700" : "text-red-700"
+                  )}>
+                    {quizResult.status === "PASS" ? "🎉 Chapter Unlocked!" : "❌ Not Quite"}
+                  </p>
+                  <p className="text-sm font-medium text-gray-700 mb-6">{quizResult.message}</p>
+
+                  {quizResult.status === "PASS" ? (
+                    <div className="space-y-3">
+                      <div className="bg-yellow-400 border-2 border-neo-black px-6 py-3 inline-block font-black text-neo-black uppercase">
+                        +8 Points Earned ✓
+                      </div>
+                      <p className="text-xs font-bold text-gray-600">Next chapter is now unlocked in your roadmap!</p>
+                      <button onClick={closeQuiz}
+                        className="mt-2 bg-neo-black text-white font-black uppercase px-8 py-3 border-2 border-neo-black">
+                        Continue →
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-3 justify-center">
+                      <button onClick={() => { setQuizResult(null); setAnswers({}); }}
+                        className="bg-neo-black text-white font-black uppercase px-6 py-3 border-2 border-neo-black shadow-[3px_3px_0_#facc15] hover:shadow-none transition-all">
+                        Retry Quiz
+                      </button>
+                      <button onClick={closeQuiz}
+                        className="px-6 py-3 border-2 border-neo-black font-bold hover:bg-gray-100">
+                        Study More
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

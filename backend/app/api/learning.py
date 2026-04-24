@@ -92,7 +92,7 @@ async def agent_dispatch(
     if action == "evaluate_quiz":
         result = agent_evaluate_quiz(payload.quiz_score or 0)
         passed = result["status"] == "PASS"
-        points = 5 if passed else 0   # learning_points on quiz pass
+        points = 8 if passed else 0   # learning_points on quiz pass (80% threshold)
 
         # Store quiz attempt
         roadmap_obj = _get_or_create_roadmap(profile, db)
