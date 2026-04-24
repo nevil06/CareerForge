@@ -5,19 +5,16 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        cream: "#fff8eb",
-        soil: "#262018",
-        moss: "#426b45",
-        fern: "#6f9f63",
-        sage: "#dce7cf",
-        clay: "#c97446",
-        sun: "#f2bf5e",
-        lagoon: "#4e9c91",
+        
+        "neo-white": "#FFFFFF",
+        "neo-grey": "#E5E7EB",
+        "neo-dark-grey": "#374151",
+        "neo-black": "#111827",
         brand: {
-          50: "#eef6e7",
-          500: "#6f9f63",
-          600: "#426b45",
-          700: "#2f5135",
+          50: "#FEFCE8",
+          500: "#EAB308",
+          600: "#CA8A04",
+          700: "#A16207",
         },
       },
       fontFamily: {
@@ -25,11 +22,12 @@ const config: Config = {
         sans: ["var(--font-sans)", "sans-serif"],
       },
       boxShadow: {
-        organic: "0 24px 70px rgba(66, 54, 34, 0.14)",
-        leaf: "0 16px 40px rgba(66, 107, 69, 0.18)",
+        "neo-sm": "4px 4px 0px 0px rgba(17, 24, 39, 1)",
+        "neo-md": "8px 8px 0px 0px rgba(17, 24, 39, 1)",
+        "neo-lg": "12px 12px 0px 0px rgba(17, 24, 39, 1)",
       },
       borderRadius: {
-        organic: "2rem 1.25rem 2.4rem 1.35rem",
+        "neo": "0px",
       },
       animation: {
         "rise-in": "riseIn 650ms ease both",

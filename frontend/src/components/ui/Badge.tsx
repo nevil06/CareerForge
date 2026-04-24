@@ -7,15 +7,15 @@ interface BadgeProps {
 }
 
 const variants = {
-  default: "bg-sage/80 text-moss ring-moss/10",
-  success: "bg-fern/15 text-moss ring-fern/20",
-  warning: "bg-sun/25 text-amber-800 ring-sun/30",
-  danger: "bg-clay/15 text-clay ring-clay/20",
+  default: "bg-neo-white text-neo-black border-2 border-neo-black shadow-[2px_2px_0px_0px_rgba(17,24,39,1)]",
+  success: "bg-green-400 text-neo-black border-2 border-neo-black shadow-[2px_2px_0px_0px_rgba(17,24,39,1)]",
+  warning: "bg-neo-grey text-neo-black border-2 border-neo-black shadow-[2px_2px_0px_0px_rgba(17,24,39,1)]",
+  danger: "bg-red-400 text-neo-black border-2 border-neo-black shadow-[2px_2px_0px_0px_rgba(17,24,39,1)]",
 };
 
 export default function Badge({ children, variant = "default", className }: BadgeProps) {
   return (
-    <span className={clsx("inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ring-1", variants[variant], className)}>
+    <span className={clsx("inline-flex items-center rounded-none px-3 py-1 text-xs font-bold uppercase tracking-wider", variants[variant], className)}>
       {children}
     </span>
   );

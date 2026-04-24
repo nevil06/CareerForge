@@ -24,13 +24,13 @@ export default function Home() {
   }, [user, router]);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-gray-50">
+    <main className="min-h-screen bg-neo-grey">
       {/* Nav */}
-      <nav className="flex items-center justify-between px-8 py-5 max-w-6xl mx-auto">
-        <span className="text-xl font-bold text-brand-600">⚡ Carrier-Forge</span>
+      <nav className="flex items-center justify-between px-8 py-5 max-w-6xl mx-auto border-b-4 border-neo-black bg-neo-white">
+        <span className="text-xl font-black text-neo-black uppercase tracking-tight">⚡ Carrier-Forge</span>
         <button
           onClick={() => router.push("/auth/login")}
-          className="text-sm text-gray-600 hover:text-brand-600 font-medium transition-colors"
+          className="text-sm font-bold text-neo-black uppercase border-2 border-neo-black px-4 py-2 hover:bg-neo-grey text-neo-black transition-colors shadow-[2px_2px_0px_0px_rgba(17,24,39,1)]"
         >
           Sign in →
         </button>
@@ -38,16 +38,16 @@ export default function Home() {
 
       {/* Hero */}
       <div className="max-w-4xl mx-auto px-8 pt-16 pb-24 text-center">
-        <div className="inline-flex items-center gap-2 bg-brand-500 text-white px-4 py-1.5 rounded-full text-sm font-medium mb-6">
+        <div className="inline-flex items-center gap-2 bg-neo-grey text-neo-black px-4 py-1.5 font-bold uppercase text-xs mb-6 border-2 border-neo-black shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">
           <Sparkles size={14} /> Powered by GLM-5.1 AI
         </div>
 
-        <h1 className="text-5xl font-bold text-gray-900 mb-5 leading-tight">
+        <h1 className="text-6xl font-black text-neo-black mb-5 leading-tight uppercase tracking-tighter">
           Your AI-Powered<br />
-          <span className="text-brand-500">Career Agent</span>
+          <span className="bg-neo-grey text-neo-black px-2 border-4 border-neo-black shadow-neo-sm">Career Agent</span>
         </h1>
 
-        <p className="text-xl text-gray-500 mb-10 max-w-2xl mx-auto">
+        <p className="text-xl text-neo-dark-grey font-bold mb-10 max-w-2xl mx-auto">
           Upload your resume. Let AI find jobs, tailor your applications,
           and write cold emails — all automatically.
         </p>
@@ -55,8 +55,8 @@ export default function Home() {
         {/* Feature list */}
         <div className="flex flex-wrap justify-center gap-3 mb-12">
           {features.map((f) => (
-            <div key={f} className="flex items-center gap-2 bg-white border border-gray-100 rounded-full px-4 py-2 text-sm text-gray-600 shadow-sm">
-              <CheckCircle size={14} className="text-green-500" /> {f}
+            <div key={f} className="flex items-center gap-2 bg-neo-white border-2 border-neo-black px-4 py-2 text-sm font-bold text-neo-black shadow-[2px_2px_0px_0px_rgba(17,24,39,1)]">
+              <CheckCircle size={16} strokeWidth={3} className="text-green-500" /> {f}
             </div>
           ))}
         </div>
@@ -82,24 +82,24 @@ export default function Home() {
           </Button>
         </div>
 
-        <p className="text-sm text-gray-400 mt-6">
+        <p className="text-sm font-bold text-neo-dark-grey mt-6 uppercase">
           Free to use · No credit card required
         </p>
       </div>
 
       {/* How it works */}
       <div className="max-w-5xl mx-auto px-8 pb-24">
-        <h2 className="text-2xl font-bold text-gray-900 text-center mb-10">How it works</h2>
+        <h2 className="text-4xl font-black text-neo-black text-center mb-10 uppercase tracking-tight">How it works</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
             { step: "01", title: "Upload Resume", desc: "Drop your PDF or DOCX. AI extracts your skills, experience, and preferred roles instantly." },
             { step: "02", title: "AI Finds Jobs", desc: "Our agent searches LinkedIn, Indeed, Glassdoor, RemoteOK and more — tailored to your profile." },
             { step: "03", title: "Apply in 1 Click", desc: "Get a tailored resume, cold email, and cover letter generated for each job automatically." },
           ].map(({ step, title, desc }) => (
-            <div key={step} className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-              <div className="text-4xl font-bold text-brand-100 mb-3">{step}</div>
-              <h3 className="font-semibold text-gray-900 mb-2">{title}</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">{desc}</p>
+            <div key={step} className="bg-neo-white border-4 border-neo-black p-6 shadow-neo-md hover:translate-y-[-4px] hover:translate-x-[-4px] hover:shadow-neo-lg transition-all">
+              <div className="text-5xl font-black text-neo-white border-text-black mb-4" style={{ WebkitTextStroke: "2px #111827" }}>{step}</div>
+              <h3 className="font-black text-neo-black mb-2 uppercase text-lg">{title}</h3>
+              <p className="text-sm font-bold text-neo-dark-grey leading-relaxed">{desc}</p>
             </div>
           ))}
         </div>

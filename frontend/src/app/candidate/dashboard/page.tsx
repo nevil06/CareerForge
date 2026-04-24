@@ -42,7 +42,7 @@ export default function CandidateDashboard() {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 p-8 overflow-auto">
+      <main className="flex-1 p-8 overflow-auto bg-neo-white">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">
             Welcome back{profile ? `, ${profile.full_name.split(" ")[0]}` : ""}! 👋
@@ -59,7 +59,7 @@ export default function CandidateDashboard() {
           ].map(({ label, value, icon: Icon, color, bg }) => (
             <Card key={label}>
               <div className="flex items-center gap-3">
-                <div className={`p-2.5 rounded-xl ${bg} ${color}`}>
+                <div className={`p-2.5 border-2 border-neo-black shadow-neo-sm ${bg} ${color}`}>
                   <Icon size={20} />
                 </div>
                 <div>
@@ -87,7 +87,7 @@ export default function CandidateDashboard() {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {[1,2,3].map((i) => (
-              <div key={i} className="bg-white rounded-2xl border border-gray-100 p-6 animate-pulse">
+              <div key={i} className="bg-neo-grey border-4 border-neo-black shadow-neo-md p-6 animate-pulse">
                 <div className="h-4 bg-gray-100 rounded w-3/4 mb-3" />
                 <div className="h-3 bg-gray-100 rounded w-1/2 mb-4" />
                 <div className="h-2 bg-gray-100 rounded mb-2" />

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,7 +17,7 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const params = useSearchParams();
   const role = params.get("role") || "candidate";
@@ -81,41 +81,41 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-50 via-white to-gray-50 px-4">
-      <Card className="w-full max-w-md">
+    <main className="min-h-screen flex items-center justify-center bg-neo-grey px-4">
+      <Card className="w-full max-w-md bg-neo-white">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-500 text-white mb-3">
-            {role === "company" ? <BriefcaseIcon size={24} /> : <UserIcon size={24} />}
+          <div className="inline-flex items-center justify-center w-14 h-14 border-4 border-neo-black bg-neo-grey text-neo-black mb-3 shadow-[2px_2px_0px_0px_rgba(17,24,39,1)]">
+            {role === "company" ? <BriefcaseIcon size={24} strokeWidth={2.5} /> : <UserIcon size={24} strokeWidth={2.5} />}
           </div>
-          <h2 className="text-2xl font-bold text-gray-900">
-            {isRegister ? "Create your account" : "Welcome back"}
+          <h2 className="text-3xl font-black text-neo-black uppercase">
+            {isRegister ? "Create account" : "Welcome back"}
           </h2>
-          <p className="text-gray-500 text-sm mt-1">
+          <p className="text-neo-dark-grey text-sm mt-1 font-bold uppercase tracking-widest">
             {isRegister
               ? `Join as a ${role}`
-              : "Sign in to continue to Carrier-Forge"}
+              : "Sign in to continue"}
           </p>
         </div>
 
         {/* Role switcher — shown on register, and as info on login */}
         {isRegister ? (
-          <div className="flex gap-2 mb-6 p-1 bg-gray-100 rounded-xl">
+          <div className="flex gap-2 mb-6 p-2 bg-neo-grey border-2 border-neo-black">
             <a href="/auth/login?role=candidate"
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                role === "candidate" ? "bg-white text-brand-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold uppercase transition-all border-2 border-neo-black ${
+                role === "candidate" ? "bg-neo-grey text-neo-black shadow-[2px_2px_0px_0px_rgba(17,24,39,1)]" : "bg-neo-white text-neo-dark-grey hover:bg-neo-grey"
               }`}>
-              <UserIcon size={16} /> Candidate
+              <UserIcon size={16} strokeWidth={2.5} /> Candidate
             </a>
             <a href="/auth/login?role=company"
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                role === "company" ? "bg-white text-brand-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold uppercase transition-all border-2 border-neo-black ${
+                role === "company" ? "bg-neo-grey text-neo-black shadow-[2px_2px_0px_0px_rgba(17,24,39,1)]" : "bg-neo-white text-neo-dark-grey hover:bg-neo-grey"
               }`}>
-              <BriefcaseIcon size={16} /> Company
+              <BriefcaseIcon size={16} strokeWidth={2.5} /> Company
             </a>
           </div>
         ) : (
-          <div className="mb-5 px-4 py-2.5 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-600 text-center">
+          <div className="mb-5 px-4 py-2.5 bg-neo-grey text-neo-black border-2 border-neo-black text-xs font-bold uppercase text-neo-black text-center shadow-[2px_2px_0px_0px_rgba(17,24,39,1)]">
             Sign in with your registered email — you'll be redirected to your dashboard automatically.
           </div>
         )}
@@ -123,14 +123,14 @@ export default function LoginPage() {
         {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label className="block text-sm font-black uppercase text-neo-black mb-1.5">
               Email address
             </label>
             <input
               {...register("email")}
               type="email"
               autoComplete="email"
-              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-shadow"
+              className="w-full border-2 border-neo-black bg-neo-white px-4 py-2.5 text-sm font-bold focus:outline-none focus:ring-4 focus:ring-neo-black transition-shadow"
               placeholder="you@example.com"
             />
             {errors.email && (
@@ -141,14 +141,14 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label className="block text-sm font-black uppercase text-neo-black mb-1.5">
               Password
             </label>
             <input
               {...register("password")}
               type="password"
               autoComplete={isRegister ? "new-password" : "current-password"}
-              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-shadow"
+              className="w-full border-2 border-neo-black bg-neo-white px-4 py-2.5 text-sm font-bold focus:outline-none focus:ring-4 focus:ring-neo-black transition-shadow"
               placeholder="••••••••"
             />
             {errors.password && (
@@ -163,16 +163,16 @@ export default function LoginPage() {
 
           {/* Error / Success messages */}
           {error && (
-            <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 flex items-start gap-2">
-              <AlertCircle size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
-              <p className="text-red-700 text-sm">{error}</p>
+            <div className="bg-red-400 border-2 border-neo-black px-4 py-3 flex items-start gap-2 shadow-[2px_2px_0px_0px_rgba(17,24,39,1)]">
+              <AlertCircle size={16} strokeWidth={2.5} className="text-neo-black flex-shrink-0 mt-0.5" />
+              <p className="text-neo-black font-bold text-sm uppercase">{error}</p>
             </div>
           )}
 
           {success && (
-            <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-3 flex items-start gap-2">
-              <CheckCircle size={16} className="text-green-500 flex-shrink-0 mt-0.5" />
-              <p className="text-green-700 text-sm">{success}</p>
+            <div className="bg-green-400 border-2 border-neo-black px-4 py-3 flex items-start gap-2 shadow-[2px_2px_0px_0px_rgba(17,24,39,1)]">
+              <CheckCircle size={16} strokeWidth={2.5} className="text-neo-black flex-shrink-0 mt-0.5" />
+              <p className="text-neo-black font-bold text-sm uppercase">{success}</p>
             </div>
           )}
 
@@ -183,11 +183,11 @@ export default function LoginPage() {
 
         {/* Toggle mode */}
         <div className="mt-6 text-center">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm font-bold text-neo-dark-grey uppercase">
             {isRegister ? "Already have an account?" : "Don't have an account?"}{" "}
             <button
               onClick={toggleMode}
-              className="text-brand-500 font-medium hover:underline focus:outline-none"
+              className="text-neo-black font-black hover:underline focus:outline-none"
             >
               {isRegister ? "Sign in" : "Create account"}
             </button>
@@ -195,12 +195,24 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <div className="mt-6 pt-6 border-t border-gray-100 text-center">
-          <p className="text-xs text-gray-400">
+        <div className="mt-6 pt-6 border-t-4 border-neo-black text-center">
+          <p className="text-xs font-bold text-neo-dark-grey uppercase">
             By continuing, you agree to Carrier-Forge's Terms of Service and Privacy Policy.
           </p>
         </div>
       </Card>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-neo-grey">
+        <div className="font-display font-black text-2xl uppercase tracking-widest text-neo-black">Loading...</div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }
