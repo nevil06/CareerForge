@@ -5,7 +5,7 @@ import { AppShell, PageHeader } from "@/components/layout/AppShell";
 import { Card, CardTitle } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
-import { getProfile, uploadResume, updateProfile } from "@/lib/api";
+import { getProfile, uploadResume, updateProfile, buildFromInterview } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
 import { Upload, CheckCircle, Loader2, FileText, User, Sparkles, X, Plus, ShieldAlert, Lock, ArrowRight } from "lucide-react";
 import { clsx } from "clsx";
@@ -58,6 +58,14 @@ export default function ProfilePage() {
   const [saved, setSaved] = useState(false);
   const [newSkill, setNewSkill] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
+  const [wizardAnswers, setWizardAnswers] = useState({
+    complex_problem: "",
+    project_from_scratch: "",
+    core_languages: "",
+    github_link: ""
+  });
+  const [wizardSaving, setWizardSaving] = useState(false);
 
   const addSkill = (e: React.KeyboardEvent | React.MouseEvent) => {
     e.preventDefault();
@@ -121,6 +129,20 @@ export default function ProfilePage() {
     }, 1000);
   };
 
+  const submitWizard = async () => {
+    if (!wizardAnswers.complex_problem.trim() || !wizardAnswers.project_from_scratch.trim() || !wizardAnswers.core_languages.trim()) return;
+    setWizardSaving(true);
+    try {
+      const res = await buildFromInterview(wizardAnswers);
+      setProfile(res.data);
+      setShowWizard(false);
+    } catch (e) {
+      console.error("Interview build failed", e);
+    } finally {
+      setWizardSaving(false);
+    }
+  };
+
   const isProcessing = !["idle", "done", "error"].includes(step);
 
   return (
@@ -134,40 +156,129 @@ export default function ProfilePage() {
 
         {/* Access Restricted Banner / Roadmap */}
         {profile && profile.careerforge_score < 70 && (
-          <div className="mb-6 p-6 border-4 border-neo-black bg-red-100 shadow-[4px_4px_0px_0px_rgba(17,24,39,1)]">
-            <div className="flex items-start gap-4">
-              <div className="bg-red-600 text-white p-3 border-2 border-neo-black mt-1">
-                <ShieldAlert size={28} />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-2xl font-black uppercase text-red-700 mb-2 flex items-center gap-2">
-                  <Lock size={20} /> Access Restricted
-                </h2>
-                <p className="text-neo-black font-bold text-lg mb-4">
-                  Trust Score: <span className="text-red-600">{profile.careerforge_score} / 100</span>
-                </p>
-                <div className="bg-white border-2 border-neo-black p-4 mb-4">
-                  <p className="font-bold text-neo-black text-sm italic">
-                    "{profile.roadmap?.direct_message || "Your resume lacks verifiable proof or GitHub projects. We require a higher trust score to unlock the platform."}"
-                  </p>
+          <>
+            <div className="mb-6 p-6 border-4 border-neo-black bg-red-100 shadow-[4px_4px_0px_0px_rgba(17,24,39,1)]">
+              <div className="flex items-start gap-4">
+                <div className="bg-red-600 text-white p-3 border-2 border-neo-black mt-1">
+                  <ShieldAlert size={28} />
                 </div>
-                
-                {profile.roadmap?.action_steps && profile.roadmap.action_steps.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-black uppercase tracking-widest text-red-800 mb-3">Roadmap to Unlock</h3>
-                    <ul className="space-y-3">
-                      {profile.roadmap.action_steps.map((step: string, i: number) => (
-                        <li key={i} className="flex gap-3 text-neo-black font-semibold bg-white p-3 border-2 border-neo-black">
-                          <ArrowRight className="text-red-500 shrink-0 mt-0.5" size={18} />
-                          {step}
-                        </li>
-                      ))}
-                    </ul>
+                <div className="flex-1">
+                  <h2 className="text-2xl font-black uppercase text-red-700 mb-2 flex items-center gap-2">
+                    <Lock size={20} /> Access Restricted
+                  </h2>
+                  <p className="text-neo-black font-bold text-lg mb-4">
+                    Trust Score: <span className="text-red-600">{profile.careerforge_score} / 100</span> — You need <span className="text-red-600">70+</span> to unlock the platform.
+                  </p>
+                  <div className="bg-white border-2 border-neo-black p-4 mb-4">
+                    <p className="font-bold text-neo-black text-sm italic">
+                      "{profile.roadmap?.direct_message || "Your resume lacks verifiable proof or GitHub projects. We require a higher trust score to unlock the platform."}"
+                    </p>
                   </div>
-                )}
+
+                  {profile.roadmap?.action_steps && profile.roadmap.action_steps.length > 0 && (
+                    <div className="mb-5">
+                      <h3 className="text-sm font-black uppercase tracking-widest text-red-800 mb-3">Roadmap to Unlock</h3>
+                      <ul className="space-y-3">
+                        {profile.roadmap.action_steps.map((step: string, i: number) => (
+                          <li key={i} className="flex gap-3 text-neo-black font-semibold bg-white p-3 border-2 border-neo-black">
+                            <ArrowRight className="text-red-500 shrink-0 mt-0.5" size={18} />
+                            {step}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => setShowWizard(true)}
+                    className="mt-2 flex items-center gap-2 bg-neo-black text-white font-black uppercase px-6 py-3 border-2 border-neo-black shadow-[4px_4px_0px_0px_rgba(239,68,68,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+                  >
+                    <Sparkles size={18} /> Strengthen My Profile — AI Interview
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+
+            {/* Interview Wizard Modal */}
+            {showWizard && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+                <div className="bg-white border-4 border-neo-black shadow-[8px_8px_0px_0px_rgba(17,24,39,1)] w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                  {/* Header */}
+                  <div className="flex items-center justify-between bg-neo-black text-white p-5">
+                    <div className="flex items-center gap-3">
+                      <Sparkles size={22} />
+                      <div>
+                        <h2 className="text-xl font-black uppercase">AI Profile Interview</h2>
+                        <p className="text-xs text-gray-300 font-medium">Answer honestly — the AI will evaluate your depth</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setShowWizard(false)} className="text-gray-400 hover:text-white transition-colors">
+                      <X size={24} />
+                    </button>
+                  </div>
+
+                  {/* Questions */}
+                  <div className="p-6 space-y-6">
+                    {[
+                      {
+                        id: "complex_problem",
+                        label: "1. What is the most complex technical problem you've solved?",
+                        placeholder: "Describe the challenge, how you approached it, and what technologies you used...",
+                        hint: "Be specific — include tech stack, scale, and what made it hard."
+                      },
+                      {
+                        id: "project_from_scratch",
+                        label: "2. Describe a project you built from scratch.",
+                        placeholder: "What did you build? What was the full tech stack? What problem does it solve?",
+                        hint: "Include architecture decisions, backend/frontend/DB choices, and any deployments."
+                      },
+                      {
+                        id: "core_languages",
+                        label: "3. What are your core programming languages and frameworks?",
+                        placeholder: "e.g. Python (FastAPI, SQLAlchemy), TypeScript (Next.js, React), MySQL...",
+                        hint: "Be honest about your proficiency level for each."
+                      },
+                      {
+                        id: "github_link",
+                        label: "4. GitHub username or portfolio link (optional but recommended)",
+                        placeholder: "https://github.com/your-username or https://your-portfolio.dev",
+                        hint: "This significantly boosts your Trust Score if your repos are public."
+                      }
+                    ].map((q) => (
+                      <div key={q.id} className="border-2 border-neo-black p-4">
+                        <label className="block text-sm font-black text-neo-black uppercase tracking-wide mb-1">{q.label}</label>
+                        <p className="text-xs text-gray-500 font-medium mb-2">{q.hint}</p>
+                        <textarea
+                          rows={3}
+                          value={(wizardAnswers as any)[q.id]}
+                          onChange={(e) => setWizardAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                          placeholder={q.placeholder}
+                          className="w-full border-2 border-gray-300 focus:border-neo-black p-3 text-sm font-medium text-neo-black resize-none outline-none transition-colors"
+                        />
+                      </div>
+                    ))}
+
+                    <div className="flex gap-3 pt-2">
+                      <button
+                        onClick={submitWizard}
+                        disabled={wizardSaving}
+                        className="flex-1 flex items-center justify-center gap-2 bg-neo-black text-white font-black uppercase py-4 border-2 border-neo-black shadow-[4px_4px_0px_0px_rgba(17,24,39,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all disabled:opacity-50 disabled:pointer-events-none"
+                      >
+                        {wizardSaving ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+                        {wizardSaving ? "Analysing Your Answers…" : "Build My Profile →"}
+                      </button>
+                      <button
+                        onClick={() => setShowWizard(false)}
+                        className="px-5 py-4 border-2 border-neo-black font-bold text-neo-black hover:bg-gray-100 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Resume Upload */}

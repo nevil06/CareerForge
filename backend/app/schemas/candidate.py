@@ -61,3 +61,9 @@ class CoverLetterRequest(BaseModel):
     job_title: str
     company_name: str
     job_description: str
+
+class ResumeInterviewAnswers(BaseModel):
+    complex_problem: str
+    project_from_scratch: str
+    core_languages: str
+    github_link: Optional[str] = None

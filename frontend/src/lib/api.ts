@@ -21,6 +21,7 @@ export default api;
 export const getProfile = () => api.get("/api/candidates/profile");
 export const createProfile = (data: object) => api.post("/api/candidates/profile", data);
 export const updateProfile = (data: object) => api.put("/api/candidates/profile", data);
+export const buildFromInterview = (data: object) => api.post("/api/candidates/resume/build-from-interview", data);
 export const uploadResume = (file: File) => {
   const form = new FormData();
   form.append("file", file);
@@ -45,3 +46,7 @@ export const getJobMatches = (id: number) => api.get(`/api/jobs/${id}/matches`);
 // ---- Company ----
 export const getCompanyDashboard = () => api.get("/api/company/dashboard");
 export const getCompanyNotifications = () => api.get("/api/company/notifications");
+
+// ---- Learning Agent ----
+export const callAgent = (payload: object) => api.post("/api/learn/agent", payload);
+export const getRoadmap = () => api.get("/api/learn/roadmap");

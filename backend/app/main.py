@@ -3,8 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import Base, engine
 from app.api import candidates, jobs, company
+from app.api import learning
 
-# Create all tables on startup
+# Create all tables on startup (including new learning tables)
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Carrier-Forge", version="1.0.0")
@@ -20,6 +21,7 @@ app.add_middleware(
 app.include_router(candidates.router)
 app.include_router(jobs.router)
 app.include_router(company.router)
+app.include_router(learning.router)
 
 
 @app.get("/health")

@@ -8,6 +8,7 @@ from app.models.user import User
 from app.schemas.candidate import (
     CandidateProfileCreate, CandidateProfileOut,
     ResumeOptimizeRequest, OutreachRequest, CoverLetterRequest,
+    ResumeInterviewAnswers,
 )
 from app.schemas.match import MatchOut, NotificationOut
 from app.services.resume_parser import parse_uploaded_resume
@@ -116,6 +117,60 @@ async def upload_resume(background_tasks: BackgroundTasks,
         db.commit()
         db.refresh(profile)
 
+    background_tasks.add_task(_embed_and_match, profile.id, db)
+    return profile
+
+
+@router.post("/resume/build-from-interview", response_model=CandidateProfileOut)
+async def build_from_interview(payload: ResumeInterviewAnswers,
+                               background_tasks: BackgroundTasks,
+                               user: User = Depends(require_candidate),
+                               db: Session = Depends(get_db)):
+    from app.services.ai_service import build_profile_from_interview
+    from app.services.github_verifier import verify_candidate_github, extract_github_username_from_url
+
+    profile = _get_or_404(user, db)
+
+    # 1. Resolve GitHub username — use wizard input first, fall back to stored profile username
+    github_link = (payload.github_link or "").strip()
+    gh_username = None
+
+    if github_link:
+        # Extract username from URL if a full URL was given
+        gh_username = extract_github_username_from_url(github_link) or github_link
+    elif profile.github_username:
+        # Fall back to the username already stored from their original resume
+        gh_username = profile.github_username
+        print(f"[Interview] No new GH link provided. Using stored username: {gh_username}")
+
+    # 2. Fetch live GitHub data for cross-verification
+    github_data = None
+    if gh_username:
+        github_data = await verify_candidate_github("", candidate_username=gh_username)
+        print(f"[Interview] GitHub data fetched for '{gh_username}': {len(github_data.get('repos', []))} repos found")
+
+    # 3. Pass answers + live GitHub data to strict AI evaluator
+    result = build_profile_from_interview(payload.model_dump(), github_data=github_data)
+
+    # 4. Update the profile with AI's output
+    if result.get("is_weak"):
+        # Just update the roadmap and score if it's still weak
+        profile.careerforge_score = result.get("careerforge_score", profile.careerforge_score)
+        profile.trust_level = result.get("trust_level", profile.trust_level)
+        profile.roadmap = result.get("roadmap", profile.roadmap)
+    else:
+        # Full profile update — write only non-empty fields from AI
+        for k, v in result.items():
+            if hasattr(profile, k) and k not in ("is_weak",) and v:
+                setattr(profile, k, v)
+        # Persist the resolved GitHub username if we found one
+        if gh_username:
+            profile.github_username = gh_username
+        # Clear roadmap since they passed
+        profile.roadmap = {}
+
+    db.commit()
+    db.refresh(profile)
     background_tasks.add_task(_embed_and_match, profile.id, db)
     return profile
 
@@ -313,25 +368,134 @@ def _embed_and_match(profile_id: int, db: Session):
             pass  # embedding optional
 
         matches = run_matching_for_candidate(profile, db)
+
+        # --- Collect ALL new matches first, then send ONE digest email ---
+        new_matches = []
         for m in matches:
             if not m.notified_candidate and m.score_total >= 0.5:
                 notify_candidate(profile, m.job, m.score_total, db)
                 m.notified_candidate = True
-                # Fire-and-forget email (best effort)
-                try:
-                    import httpx as _httpx
-                    from app.services.email_service import _template, BREVO_API_URL
-                    from app.core.config import settings as _s
-                    pct = int(m.score_total * 100)
-                    body = f"<p>Hi <strong>{profile.full_name}</strong>, you matched <strong>{pct}%</strong> with <strong>{m.job.title}</strong> at {m.job.company_name}.</p>"
-                    _httpx.post(BREVO_API_URL, json={
-                        "sender": {"name": _s.BREVO_SENDER_NAME, "email": _s.BREVO_SENDER_EMAIL},
-                        "to": [{"email": profile.user.email, "name": profile.full_name}],
-                        "subject": f"You matched {pct}% with {m.job.title}",
-                        "htmlContent": _template("New Job Match! 🎯", body),
-                    }, headers={"api-key": _s.BREVO_API_KEY, "content-type": "application/json"}, timeout=10)
-                except Exception:
-                    pass
+                new_matches.append(m)
+
         db.commit()
+
+        # Send a single digest email for all new matches
+        if new_matches:
+            try:
+                _send_match_digest_email(profile, new_matches)
+            except Exception as e:
+                print(f"[email] Digest email failed: {e}")
     finally:
         db.close()
+
+
+def _send_match_digest_email(profile, matches):
+    """Send one bundled digest email for all new job matches."""
+    import httpx as _httpx
+    from app.core.config import settings as _s
+
+    if not _s.BREVO_API_KEY:
+        return
+
+    candidate_name = profile.full_name
+    count = len(matches)
+    top = matches[0]
+    top_pct = int(top.score_total * 100)
+
+    # Build the job cards HTML
+    job_cards_html = ""
+    for m in matches:
+        pct = int(m.score_total * 100)
+        app_link = m.job.application_link or "http://localhost:3000/candidate/jobs"
+        # Score bar color
+        bar_color = "#16a34a" if pct >= 80 else "#ca8a04" if pct >= 60 else "#dc2626"
+        job_cards_html += f"""
+        <div style="border:3px solid #111;margin-bottom:16px;background:#fff;box-shadow:4px 4px 0 #111;">
+          <div style="background:#111;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;">
+            <span style="color:#fff;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:.05em;">{m.job.company_name}</span>
+            <span style="background:{bar_color};color:#fff;font-weight:900;font-size:13px;padding:2px 10px;border:2px solid {bar_color};">{pct}% Match</span>
+          </div>
+          <div style="padding:14px 16px;">
+            <p style="margin:0 0 4px;font-size:17px;font-weight:800;color:#111;">{m.job.title}</p>
+            <p style="margin:0 0 12px;font-size:13px;color:#6b7280;">{m.job.location or 'Remote / Flexible'}</p>
+            <a href="{app_link}"
+               style="display:inline-block;background:#111;color:#fff;font-weight:900;font-size:13px;text-transform:uppercase;letter-spacing:.05em;padding:10px 20px;text-decoration:none;border:2px solid #111;box-shadow:3px 3px 0 #facc15;">
+              View &amp; Apply →
+            </a>
+          </div>
+        </div>"""
+
+    html = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CareerForge — New Job Matches</title></head>
+<body style="margin:0;padding:0;background:#f5f5f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:600px;margin:32px auto;padding:0 16px;">
+
+    <!-- Header -->
+    <div style="background:#111;border:4px solid #111;padding:24px 28px;box-shadow:6px 6px 0 #facc15;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:28px;">⚡</span>
+        <div>
+          <h1 style="margin:0;color:#facc15;font-size:22px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;">CareerForge</h1>
+          <p style="margin:0;color:#9ca3af;font-size:13px;font-weight:600;">Trust-Verified Talent Platform</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Intro Card -->
+    <div style="background:#facc15;border:4px solid #111;border-top:0;padding:20px 28px;box-shadow:6px 6px 0 #111;">
+      <h2 style="margin:0 0 6px;font-size:20px;font-weight:900;color:#111;text-transform:uppercase;">
+        🎯 {count} New Job {'Match' if count == 1 else 'Matches'} Found!
+      </h2>
+      <p style="margin:0;font-size:14px;color:#374151;font-weight:600;">
+        Hi <strong>{candidate_name}</strong>, your best match scored <strong>{top_pct}%</strong> with <strong>{top.job.title}</strong> at <strong>{top.job.company_name}</strong>.
+      </p>
+    </div>
+
+    <!-- Job Cards -->
+    <div style="background:#f5f5f0;border:4px solid #111;border-top:0;padding:20px 24px;box-shadow:6px 6px 0 #111;">
+      {job_cards_html}
+      <!-- CTA -->
+      <div style="margin-top:20px;text-align:center;">
+        <a href="http://localhost:3000/candidate/jobs"
+           style="display:inline-block;background:#111;color:#facc15;font-weight:900;font-size:15px;text-transform:uppercase;letter-spacing:.06em;padding:14px 32px;text-decoration:none;border:3px solid #111;box-shadow:5px 5px 0 #facc15;">
+          View All Matches →
+        </a>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="padding:16px 4px;text-align:center;">
+      <p style="margin:0;font-size:12px;color:#9ca3af;">
+        You're receiving this because you have an active CareerForge account.<br>
+        Matches are based on your verified skills and Trust Score.
+      </p>
+    </div>
+
+  </div>
+</body>
+</html>"""
+
+    text = f"Hi {candidate_name}, you have {count} new job match(es) on CareerForge! " \
+           f"Best match: {top_pct}% with {top.job.title} at {top.job.company_name}. " \
+           f"View at http://localhost:3000/candidate/jobs"
+
+    subject = (
+        f"🎯 {top_pct}% Match — {top.job.title} at {top.job.company_name}"
+        if count == 1
+        else f"🎯 {count} New Job Matches Found on CareerForge"
+    )
+
+    _httpx.post(
+        "https://api.brevo.com/v3/smtp/email",
+        json={
+            "sender": {"name": _s.BREVO_SENDER_NAME, "email": _s.BREVO_SENDER_EMAIL},
+            "to": [{"email": profile.user.email, "name": candidate_name}],
+            "subject": subject,
+            "htmlContent": html,
+            "textContent": text,
+        },
+        headers={"api-key": _s.BREVO_API_KEY, "content-type": "application/json"},
+        timeout=15,
+    )

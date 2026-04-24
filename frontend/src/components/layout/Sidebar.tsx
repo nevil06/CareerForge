@@ -4,13 +4,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { clsx } from "clsx";
 import { useAuthStore } from "@/lib/store";
 import {
-  LayoutDashboard, Briefcase, User, Bell, LogOut, Sparkles, Anvil,
+  LayoutDashboard, Briefcase, User, Bell, LogOut, Sparkles, Anvil, GraduationCap,
 } from "lucide-react";
 
 const candidateLinks = [
   { href: "/candidate/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/candidate/profile", label: "My Profile", icon: User },
   { href: "/candidate/jobs", label: "Browse Jobs", icon: Briefcase },
+  { href: "/candidate/learn", label: "Learn & Earn", icon: GraduationCap },
   { href: "/candidate/ai-tools", label: "AI Tools", icon: Sparkles },
   { href: "/candidate/notifications", label: "Notifications", icon: Bell },
 ];
