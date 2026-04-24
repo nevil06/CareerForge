@@ -386,4 +386,4 @@ carrier-forge/
 | GLM API errors | Check `ZHIPU_API_KEY` in `.env` — get it from [console.zhipuai.cn](https://console.zhipuai.cn) |
 | Tables not created | Make sure `DATABASE_URL` is correct and the `hiring_agent` database exists |
 
-😊
+-TEAM I GUESS BRO 😎
