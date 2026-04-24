@@ -31,13 +31,15 @@ function LoginContent() {
 
   // Check if already logged in
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      const stored = useAuthStore.getState().user;
-      if (stored) {
-        router.replace(stored.role === "company" ? "/company/dashboard" : "/candidate/dashboard");
+    const checkSession = async () => {
+      const { supabase } = await import("@/lib/supabase");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const actualRole = session.user?.user_metadata?.role || "candidate";
+        router.replace(actualRole === "company" ? "/company/dashboard" : "/candidate/dashboard");
       }
-    }
+    };
+    checkSession();
   }, [router]);
 
   const onSubmit = async (data: FormData) => {
