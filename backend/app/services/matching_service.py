@@ -125,25 +125,34 @@ def compute_match(candidate: CandidateProfile, job: Job) -> dict:
 # ---------------------------------------------------------------------------
 
 def run_matching_for_candidate(candidate: CandidateProfile, db: Session,
-                                min_score: float = 0.3) -> List[Match]:
-    """Score candidate against all active jobs; upsert top matches."""
-    jobs = db.query(Job).filter(Job.is_active == True).all()
-    results: List[Match] = []
+                                min_score: float = 0.3,
+                                job_limit: int = 25) -> List[Match]:
+    """Score candidate against the most-recent active jobs (capped at job_limit)."""
+    # Fetch only the latest N jobs — avoids full-table scan on large DBs
+    jobs = (
+        db.query(Job)
+        .filter(Job.is_active == True)
+        .order_by(Job.id.desc())
+        .limit(job_limit)
+        .all()
+    )
 
+    # Pre-fetch existing match IDs to skip DB round-trips inside the loop
+    existing_map = {
+        m.job_id: m
+        for m in db.query(Match).filter_by(candidate_id=candidate.id).all()
+    }
+
+    results: List[Match] = []
     for job in jobs:
         scores = compute_match(candidate, job)
         if scores["score_total"] < min_score:
             continue
 
-        # Upsert
-        existing = db.query(Match).filter_by(
-            candidate_id=candidate.id, job_id=job.id
-        ).first()
-
-        if existing:
+        if job.id in existing_map:
+            match = existing_map[job.id]
             for k, v in scores.items():
-                setattr(existing, k, v)
-            match = existing
+                setattr(match, k, v)
         else:
             match = Match(candidate_id=candidate.id, job_id=job.id, **scores)
             db.add(match)
@@ -155,24 +164,31 @@ def run_matching_for_candidate(candidate: CandidateProfile, db: Session,
 
 
 def run_matching_for_job(job: Job, db: Session,
-                          min_score: float = 0.3) -> List[Match]:
-    """Score all candidates against a new job; upsert top matches."""
-    candidates = db.query(CandidateProfile).all()
-    results: List[Match] = []
+                          min_score: float = 0.3,
+                          candidate_limit: int = 25) -> List[Match]:
+    """Score the most-recent candidates against a new job (capped at candidate_limit)."""
+    candidates = (
+        db.query(CandidateProfile)
+        .order_by(CandidateProfile.id.desc())
+        .limit(candidate_limit)
+        .all()
+    )
 
+    existing_map = {
+        m.candidate_id: m
+        for m in db.query(Match).filter_by(job_id=job.id).all()
+    }
+
+    results: List[Match] = []
     for candidate in candidates:
         scores = compute_match(candidate, job)
         if scores["score_total"] < min_score:
             continue
 
-        existing = db.query(Match).filter_by(
-            candidate_id=candidate.id, job_id=job.id
-        ).first()
-
-        if existing:
+        if candidate.id in existing_map:
+            match = existing_map[candidate.id]
             for k, v in scores.items():
-                setattr(existing, k, v)
-            match = existing
+                setattr(match, k, v)
         else:
             match = Match(candidate_id=candidate.id, job_id=job.id, **scores)
             db.add(match)

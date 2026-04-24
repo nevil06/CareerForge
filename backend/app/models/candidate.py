@@ -35,6 +35,7 @@ class CandidateProfile(Base):
     verified_skills = Column(JSON, default=list)
     strength_tags = Column(JSON, default=list)
     roadmap = Column(JSON, default=dict)
+    improvement_tips = Column(JSON, default=dict)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

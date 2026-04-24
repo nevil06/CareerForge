@@ -79,9 +79,12 @@ def update_profile(payload: CandidateProfileCreate,
     return profile
 
 
-@router.get("/profile", response_model=CandidateProfileOut)
+@router.get("/profile")
 def get_profile(user: User = Depends(require_candidate), db: Session = Depends(get_db)):
-    return _get_or_404(user, db)
+    profile = db.query(CandidateProfile).filter_by(user_id=user.id).first()
+    if not profile:
+        return Response(status_code=204)   # No Content — profile not yet created
+    return profile
 
 
 # ---------------------------------------------------------------------------
@@ -247,6 +250,41 @@ def cover_letter(payload: CoverLetterRequest,
 
 
 # ---------------------------------------------------------------------------
+# AI Job Search Agent
+# ---------------------------------------------------------------------------
+
+@router.post("/search-jobs")
+async def search_jobs(
+    user: User = Depends(require_candidate),
+    db: Session = Depends(get_db)
+):
+    """Trigger AI job search then immediately run matching so dashboard shows results."""
+    from app.services.job_agent import run_job_search_agent
+
+    profile = _get_or_404(user, db)
+
+    # Step 1: Fetch + save jobs
+    result = await run_job_search_agent(profile, db)
+
+    # Step 2: Run matching engine so matches table is populated right away
+    matches = run_matching_for_candidate(profile, db)
+    print(f"[search-jobs] Matched {len(matches)} jobs for {profile.full_name}")
+
+    return {
+        "jobs_added": result["jobs_saved"],
+        "matches_found": len(matches),
+        "queries_used": result["queries_used"],
+        "total_fetched": result["total_fetched"],
+        "message": (
+            f"Found {result['total_fetched']} jobs and matched {len(matches)} to your profile."
+            if len(matches) > 0
+            else "Jobs fetched but no strong matches yet — try again after updating your profile."
+        ),
+    }
+
+
+
+# ---------------------------------------------------------------------------
 # Notifications
 # ---------------------------------------------------------------------------
 
@@ -350,64 +388,82 @@ def mark_read(notif_id: int, user: User = Depends(get_current_user), db: Session
 # ---------------------------------------------------------------------------
 
 def _embed_and_match(profile_id: int, db: Session):
-    """Generate embedding for profile then run matching engine."""
+    """Generate embedding for profile then run matching engine and send digest email."""
     from app.core.database import SessionLocal
+    from app.models.user import User as _User
     db = SessionLocal()
     try:
         profile = db.query(CandidateProfile).get(profile_id)
         if not profile:
             return
-        # Build text representation for embedding
-        text = f"{profile.full_name} {profile.summary or ''} " \
-               f"Skills: {', '.join(profile.skills or [])} " \
-               f"Roles: {', '.join(profile.preferred_roles or [])}"
+
+        # Get candidate email directly — avoid lazy-load relationship issues
+        user_email = db.query(_User.email).filter(_User.id == profile.user_id).scalar()
+        if not user_email:
+            print(f"[email] No email found for user_id={profile.user_id}")
+
+        # Build embedding text
+        text = (f"{profile.full_name} {profile.summary or ''} "
+                f"Skills: {', '.join(profile.skills or [])} "
+                f"Roles: {', '.join(profile.preferred_roles or [])}")
         try:
             profile.embedding = get_embedding(text)
             db.commit()
-        except Exception:
-            pass  # embedding optional
+        except Exception as e:
+            print(f"[embed] Embedding failed (non-fatal): {e}")
 
         matches = run_matching_for_candidate(profile, db)
+        print(f"[match] {len(matches)} matches found for profile_id={profile_id}")
 
-        # --- Collect ALL new matches first, then send ONE digest email ---
+        # Collect new high-quality matches
         new_matches = []
         for m in matches:
+            # Eagerly load the job while session is open
+            _ = m.job  # trigger lazy load now
             if not m.notified_candidate and m.score_total >= 0.5:
                 notify_candidate(profile, m.job, m.score_total, db)
                 m.notified_candidate = True
                 new_matches.append(m)
 
         db.commit()
+        print(f"[email] {len(new_matches)} new matches to notify")
 
-        # Send a single digest email for all new matches
-        if new_matches:
+        if new_matches and user_email:
             try:
-                _send_match_digest_email(profile, new_matches)
+                _send_match_digest_email(profile, new_matches, user_email)
             except Exception as e:
                 print(f"[email] Digest email failed: {e}")
+    except Exception as e:
+        print(f"[_embed_and_match] Unhandled error: {e}")
     finally:
         db.close()
 
 
-def _send_match_digest_email(profile, matches):
+
+def _send_match_digest_email(profile, matches, user_email: str):
     """Send one bundled digest email for all new job matches."""
     import httpx as _httpx
     from app.core.config import settings as _s
 
     if not _s.BREVO_API_KEY:
+        print("[email] BREVO_API_KEY not set — skipping email")
+        return
+    if not user_email:
+        print("[email] No recipient email — skipping")
         return
 
-    candidate_name = profile.full_name
+    candidate_name = profile.full_name or "Candidate"
     count = len(matches)
     top = matches[0]
     top_pct = int(top.score_total * 100)
 
-    # Build the job cards HTML
+    print(f"[email] Sending digest to {user_email} — {count} matches, top {top_pct}%")
+
+    # Build job cards HTML
     job_cards_html = ""
     for m in matches:
         pct = int(m.score_total * 100)
         app_link = m.job.application_link or "http://localhost:3000/candidate/jobs"
-        # Score bar color
         bar_color = "#16a34a" if pct >= 80 else "#ca8a04" if pct >= 60 else "#dc2626"
         job_cards_html += f"""
         <div style="border:3px solid #111;margin-bottom:16px;background:#fff;box-shadow:4px 4px 0 #111;">
@@ -420,82 +476,64 @@ def _send_match_digest_email(profile, matches):
             <p style="margin:0 0 12px;font-size:13px;color:#6b7280;">{m.job.location or 'Remote / Flexible'}</p>
             <a href="{app_link}"
                style="display:inline-block;background:#111;color:#fff;font-weight:900;font-size:13px;text-transform:uppercase;letter-spacing:.05em;padding:10px 20px;text-decoration:none;border:2px solid #111;box-shadow:3px 3px 0 #facc15;">
-              View &amp; Apply →
+              View &amp; Apply
             </a>
           </div>
         </div>"""
 
     html = f"""<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CareerForge — New Job Matches</title></head>
+<head><meta charset="utf-8"><title>CareerForge - New Job Matches</title></head>
 <body style="margin:0;padding:0;background:#f5f5f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="max-width:600px;margin:32px auto;padding:0 16px;">
-
-    <!-- Header -->
     <div style="background:#111;border:4px solid #111;padding:24px 28px;box-shadow:6px 6px 0 #facc15;">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <span style="font-size:28px;">⚡</span>
-        <div>
-          <h1 style="margin:0;color:#facc15;font-size:22px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;">CareerForge</h1>
-          <p style="margin:0;color:#9ca3af;font-size:13px;font-weight:600;">Trust-Verified Talent Platform</p>
-        </div>
-      </div>
+      <h1 style="margin:0;color:#facc15;font-size:22px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;">CareerForge</h1>
+      <p style="margin:4px 0 0;color:#9ca3af;font-size:13px;">Trust-Verified Talent Platform</p>
     </div>
-
-    <!-- Intro Card -->
     <div style="background:#facc15;border:4px solid #111;border-top:0;padding:20px 28px;box-shadow:6px 6px 0 #111;">
       <h2 style="margin:0 0 6px;font-size:20px;font-weight:900;color:#111;text-transform:uppercase;">
-        🎯 {count} New Job {'Match' if count == 1 else 'Matches'} Found!
+        {count} New Job {'Match' if count == 1 else 'Matches'} Found!
       </h2>
       <p style="margin:0;font-size:14px;color:#374151;font-weight:600;">
-        Hi <strong>{candidate_name}</strong>, your best match scored <strong>{top_pct}%</strong> with <strong>{top.job.title}</strong> at <strong>{top.job.company_name}</strong>.
+        Hi <strong>{candidate_name}</strong>, your best match scored <strong>{top_pct}%</strong>
+        with <strong>{top.job.title}</strong> at <strong>{top.job.company_name}</strong>.
       </p>
     </div>
-
-    <!-- Job Cards -->
     <div style="background:#f5f5f0;border:4px solid #111;border-top:0;padding:20px 24px;box-shadow:6px 6px 0 #111;">
       {job_cards_html}
-      <!-- CTA -->
       <div style="margin-top:20px;text-align:center;">
         <a href="http://localhost:3000/candidate/jobs"
-           style="display:inline-block;background:#111;color:#facc15;font-weight:900;font-size:15px;text-transform:uppercase;letter-spacing:.06em;padding:14px 32px;text-decoration:none;border:3px solid #111;box-shadow:5px 5px 0 #facc15;">
-          View All Matches →
+           style="display:inline-block;background:#111;color:#facc15;font-weight:900;font-size:15px;text-transform:uppercase;padding:14px 32px;text-decoration:none;border:3px solid #111;box-shadow:5px 5px 0 #facc15;">
+          View All Matches
         </a>
       </div>
     </div>
-
-    <!-- Footer -->
     <div style="padding:16px 4px;text-align:center;">
-      <p style="margin:0;font-size:12px;color:#9ca3af;">
-        You're receiving this because you have an active CareerForge account.<br>
-        Matches are based on your verified skills and Trust Score.
-      </p>
+      <p style="margin:0;font-size:12px;color:#9ca3af;">CareerForge — Trust-Verified Job Matching</p>
     </div>
-
   </div>
 </body>
 </html>"""
 
-    text = f"Hi {candidate_name}, you have {count} new job match(es) on CareerForge! " \
-           f"Best match: {top_pct}% with {top.job.title} at {top.job.company_name}. " \
-           f"View at http://localhost:3000/candidate/jobs"
-
     subject = (
-        f"🎯 {top_pct}% Match — {top.job.title} at {top.job.company_name}"
+        f"{top_pct}% Match - {top.job.title} at {top.job.company_name}"
         if count == 1
-        else f"🎯 {count} New Job Matches Found on CareerForge"
+        else f"{count} New Job Matches on CareerForge"
     )
 
-    _httpx.post(
-        "https://api.brevo.com/v3/smtp/email",
-        json={
-            "sender": {"name": _s.BREVO_SENDER_NAME, "email": _s.BREVO_SENDER_EMAIL},
-            "to": [{"email": profile.user.email, "name": candidate_name}],
-            "subject": subject,
-            "htmlContent": html,
-            "textContent": text,
-        },
-        headers={"api-key": _s.BREVO_API_KEY, "content-type": "application/json"},
-        timeout=15,
-    )
+    try:
+        resp = _httpx.post(
+            "https://api.brevo.com/v3/smtp/email",
+            json={
+                "sender": {"name": _s.BREVO_SENDER_NAME, "email": _s.BREVO_SENDER_EMAIL},
+                "to": [{"email": user_email, "name": candidate_name}],
+                "subject": subject,
+                "htmlContent": html,
+            },
+            headers={"api-key": _s.BREVO_API_KEY, "content-type": "application/json"},
+            timeout=15,
+        )
+        print(f"[email] Brevo response: {resp.status_code} — {resp.text[:200]}")
+    except Exception as e:
+        print(f"[email] HTTP send failed: {e}")
+

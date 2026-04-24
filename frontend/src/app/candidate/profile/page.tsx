@@ -7,7 +7,7 @@ import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { getProfile, uploadResume, updateProfile, buildFromInterview, callAgent, getRoadmap } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
-import { Upload, CheckCircle, Loader2, FileText, User, Sparkles, X, Plus, ShieldAlert, Lock, ArrowRight, BookOpen, GraduationCap, Trophy, Github, Target, Map, PenLine, Hammer, TrendingUp, Unlock, Check, XCircle, Star, RotateCcw, ChevronRight } from "lucide-react";
+import { Upload, CheckCircle, Loader2, FileText, User, Sparkles, X, Plus, ShieldAlert, Lock, ArrowRight, BookOpen, GraduationCap, Trophy, Github, Target, Map, PenLine, Hammer, TrendingUp, Unlock, Check, XCircle, Star, RotateCcw, ChevronRight, Lightbulb } from "lucide-react";
 import { clsx } from "clsx";
 
 // ── Pipeline steps for the visual workflow diagram ─────────────────────────
@@ -602,7 +602,53 @@ export default function ProfilePage() {
           description="Upload a resume and let the agent extract the structured profile that powers your matches."
         />
 
-        {/* ── Access Restricted Banner ── */}
+        {/* ── Improvement Tips (score >= 70) ── */}
+        {profile && profile.careerforge_score >= 70 && profile.improvement_tips?.quote && (
+          <div className="mb-6 border-4 border-neo-black bg-neo-white shadow-[6px_6px_0_#111] overflow-hidden">
+            {/* Header */}
+            <div className="bg-neo-black border-b-4 border-neo-black px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="bg-yellow-400 border-2 border-white p-1.5">
+                  <TrendingUp size={18} strokeWidth={2.5} className="text-neo-black" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black uppercase text-white tracking-wide">Profile Improvement Tips</h3>
+                  <p className="text-xs text-gray-400 font-medium">Good profile — here's how to make it stronger</p>
+                </div>
+              </div>
+              <div className="bg-yellow-400 border-2 border-white px-4 py-1.5 text-center shadow-[2px_2px_0_#facc15]">
+                <p className="text-xl font-black text-neo-black">{profile.careerforge_score}</p>
+                <p className="text-[10px] font-black uppercase text-neo-black">/ 100</p>
+              </div>
+            </div>
+            <div className="px-6 pt-5 pb-2">
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 px-5 py-4 mb-5 flex gap-3">
+                <Lightbulb size={18} className="text-yellow-500 shrink-0 mt-0.5" strokeWidth={2.5} />
+                <p className="text-sm font-bold text-gray-800 italic leading-relaxed">
+                  "{profile.improvement_tips.quote}"
+                </p>
+              </div>
+            </div>
+            {/* Action tips */}
+            {profile.improvement_tips?.action_steps?.length > 0 && (
+              <div className="px-6 pb-6">
+                <p className="text-xs font-black uppercase tracking-widest text-gray-500 mb-3">Suggested Next Steps</p>
+                <div className="space-y-2">
+                  {profile.improvement_tips.action_steps.map((tip: string, i: number) => (
+                    <div key={i} className="flex items-start gap-3 border-2 border-neo-black p-3 bg-white">
+                      <div className="w-6 h-6 bg-yellow-400 border-2 border-neo-black flex items-center justify-center shrink-0 font-black text-xs">
+                        {i + 1}
+                      </div>
+                      <p className="text-sm font-medium text-neo-black">{tip}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Access Restricted Banner (score < 70) ── */}
         {profile && profile.careerforge_score < 70 && (
           <>
             <RestrictedBanner
@@ -610,6 +656,7 @@ export default function ProfilePage() {
               onShowWizard={() => setShowWizard(true)}
               onProfileUpdate={setProfile}
             />
+
 
             {/* Interview Wizard Modal */}
             {showWizard && (

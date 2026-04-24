@@ -7,6 +7,7 @@ import MatchCard from "@/components/MatchCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import Badge from "@/components/ui/Badge";
 import { getCandidateMatches, getProfile } from "@/lib/api";
+import api from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
 import { Briefcase, Star, TrendingUp, Sparkles, ShieldCheck, AlertCircle } from "lucide-react";
 
@@ -16,6 +17,8 @@ export default function CandidateDashboard() {
   const [matches, setMatches] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
+  const [searchMsg, setSearchMsg] = useState("");
 
   // Auth guard
   useEffect(() => {
@@ -33,9 +36,10 @@ export default function CandidateDashboard() {
     if (!token) return;
     getProfile()
       .then((p) => {
-        if (p.data.careerforge_score < 70) {
+        // 204 means no profile yet
+        if (!p.data || p.data.careerforge_score < 70) {
           router.replace("/candidate/profile");
-          return Promise.reject("trust_too_low");
+          return Promise.reject("no_profile");
         }
         setProfile(p.data);
         return getCandidateMatches();
@@ -44,12 +48,28 @@ export default function CandidateDashboard() {
         if (m) setMatches(m.data);
       })
       .catch((e) => {
-        if (e === "trust_too_low" || e.response?.status === 404) {
+        if (e === "no_profile" || e.response?.status === 404) {
           router.replace("/candidate/profile");
         }
       })
       .finally(() => setLoading(false));
   }, [router, token]);
+
+  const handleAISearch = async () => {
+    setSearching(true);
+    setSearchMsg("");
+    try {
+      const r = await api.post("/api/candidates/search-jobs");
+      setSearchMsg(`✅ ${r.data.message}`);
+      // Refresh matches after job search
+      const m = await getCandidateMatches();
+      setMatches(m.data);
+    } catch (e: any) {
+      setSearchMsg("❌ " + (e.response?.data?.detail || "Search failed"));
+    } finally {
+      setSearching(false);
+    }
+  };
 
   const topScore = matches[0]?.score_total ?? 0;
   const avgScore = matches.length
@@ -108,7 +128,7 @@ export default function CandidateDashboard() {
                 <div className="flex flex-wrap gap-2">
                   {profile.verified_skills?.map((sk: any, i: number) => (
                     <span key={i} className="bg-neo-grey text-neo-black font-bold text-xs uppercase px-2 py-1 border-2 border-neo-black flex items-center gap-1">
-                      <ShieldCheck size={12} className="text-green-600" /> {sk.name}
+                      <ShieldCheck size={12} className="text-green-600" /> {typeof sk === "string" ? sk : sk.name}
                     </span>
                   ))}
                   {!profile.verified_skills?.length && <span className="text-sm font-semibold text-neo-dark-grey italic">No verified skills yet.</span>}
@@ -173,17 +193,18 @@ export default function CandidateDashboard() {
         ) : matches.length === 0 ? (
           <Card className="text-center py-16">
             <Sparkles className="mx-auto mb-3 text-gray-300" size={40} />
-            <p className="font-semibold text-gray-700 mb-1">No matches yet</p>
+            <p className="font-semibold text-gray-700 mb-1">No job matches yet</p>
             <p className="text-sm text-gray-400 mb-4">
-              {profile
-                ? "Go to Browse Jobs and click \"Search from my Resume\" to find matches."
-                : "Upload your resume to get personalised job matches."}
+              Let the AI agent search jobs from your resume profile.
             </p>
+            {searchMsg && <p className="text-sm mb-4 font-medium">{searchMsg}</p>}
             <button
-              onClick={() => router.push(profile ? "/candidate/jobs" : "/candidate/profile")}
-              className="text-sm text-brand-500 hover:underline font-medium"
+              onClick={handleAISearch}
+              disabled={searching}
+              className="inline-flex items-center gap-2 bg-neo-black text-white font-black uppercase text-sm px-6 py-3 border-2 border-neo-black shadow-[4px_4px_0_#facc15] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-50"
             >
-              {profile ? "Browse Jobs →" : "Upload Resume →"}
+              <Sparkles size={16} />
+              {searching ? "Searching..." : "Search Jobs from My Resume"}
             </button>
           </Card>
         ) : (
