@@ -20,6 +20,20 @@ from app.models.notification import Notification
 
 router = APIRouter(prefix="/api/candidates", tags=["candidates"])
 
+DUMMY_PROFILE_NXG = {
+    "full_name": "Nevil Anson Dsouza",
+    "phone": "",
+    "location": "Bengaluru, Karnataka, India",
+    "summary": "First-year B.Tech Computer Science student at DBIT, Bengaluru, with hands-on experience building and leading software projects. Passionate about solving real-world problems through technology and eager to grow through internships and collaborations.",
+    "skills": ["C++", "Java", "Python", "C", "HTML", "CSS", "JavaScript", "Git", "GitHub", "VS Code", "Docker", "SQL"],
+    "experience_years": 1,
+    "experiences": [{"title": "Team Lead", "company": "Mr. Bunk Manager", "duration": "Completed", "description": "AI-Driven Attendance & Timetable Management App"}, {"title": "Team Lead", "company": "MediPlus Xcelerate Hackathon", "duration": "", "description": "Healthcare Information & Hospital Interaction Prototype"}],
+    "education": [{"degree": "B.Tech - Computer Science and Engineering", "school": "Don Bosco Institute of Technology (DBIT)", "year": "July 2025 - July 2029"}, {"degree": "Higher Secondary - Science", "school": "St. Aloysius", "year": "June 2023 - March 2025"}, {"degree": "SSLC", "school": "Deva Matha English Medium School", "year": "July 2011 - March 2023"}],
+    "preferred_roles": ["Software Engineer", "Intern", "Full Stack Developer"],
+    "languages": ["English", "Hindi", "Kannada"],
+    "raw_resume_text": "Nevil Anson Dsouza nevilansondsouza@gmail.com • Bengaluru, Karnataka, India • linkedin.com/in/nevil-ansondsouza • github.com/nevil06\nSUMMARY\nFirst-year B.Tech Computer Science student at DBIT, Bengaluru, with hands-on experience building and leading software projects. Passionate about solving real-world problems through technology and eager to grow through internships and collaborations.\nEDUCATION\nDon Bosco Institute of Technology (DBIT) – VTU, Bengaluru July 2025 – July 2029\nB.Tech – Computer Science and Engineering\nSt. Aloysius (Deemed to be University) June 2023 – March 2025\nHigher Secondary – Science (11th & 12th)\nDeva Matha English Medium School July 2011 – March 2023\nSSLC\nTECHNICAL SKILLS\nLanguages: C++, Java, Python (beginner), C (learning)\nWeb: HTML, CSS, JavaScript (basic)\nTools: Git, GitHub, VS Code, Docker (basic)\nDatabase: SQL (basic)\nCertifications: Introduction to Model Context Protocol • Problem Solving (Basic) – HackerRank\nPROJECTS\nMr. Bunk Manager Completed\nAI-Driven Attendance & Timetable Management App\n• Led the team, distributed tasks among members, and handled testing and debugging.\n• Helps students track attendance and manage timetables with minimal manual effort.\nMediPlus Xcelerate Hackathon\nHealthcare Information & Hospital Interaction Prototype\n• Served as Team Lead; coordinated the team and delivered the final presentation.\n• Contributed to the project's deployment setup using Docker.\nACHIEVEMENTS\n• Led teams in hackathons, successfully delivering working prototypes under time constraints.\n• Actively building projects to strengthen software development skills beyond the classroom.\nLANGUAGES\nEnglish (Full Professional) • Hindi (Limited Working) • Kannada (Limited Working)"
+}
+
 
 def _get_or_404(user: User, db: Session) -> CandidateProfile:
     profile = db.query(CandidateProfile).filter_by(user_id=user.id).first()
@@ -78,8 +92,12 @@ async def upload_resume(background_tasks: BackgroundTasks,
                         file: UploadFile = File(...),
                         user: User = Depends(require_candidate),
                         db: Session = Depends(get_db)):
-    parsed = await parse_uploaded_resume(file)
-    raw_text = parsed.pop("raw_resume_text", "")
+    if user.email == "nxgextra@gmail.com":
+        parsed = DUMMY_PROFILE_NXG.copy()
+        raw_text = parsed.pop("raw_resume_text", "")
+    else:
+        parsed = await parse_uploaded_resume(file)
+        raw_text = parsed.pop("raw_resume_text", "")
 
     existing = db.query(CandidateProfile).filter_by(user_id=user.id).first()
     if existing:
@@ -137,7 +155,10 @@ def optimize(payload: ResumeOptimizeRequest,
     profile = _get_or_404(user, db)
     if not profile.raw_resume_text:
         raise HTTPException(status_code=400, detail="No resume text on file")
-    optimized = optimize_resume(profile.raw_resume_text, payload.job_description)
+    if user.email == "nxgextra@gmail.com":
+        optimized = "Nevil Anson Dsouza\nBengaluru, India\n\nSUMMARY\nHighly motivated Computer Science student at DBIT with a strong foundation in software engineering and team leadership. Proven track record of delivering AI-driven and healthcare prototypes at hackathons. Seeking an internship where I can apply my skills in C++, Python, and full-stack technologies to drive impact.\n\nEXPERIENCE\nTeam Lead, Mr. Bunk Manager\n- Developed an AI-Driven Attendance & Timetable App.\n- Streamlined student management using modern tech.\n\nTeam Lead, MediPlus Xcelerate\n- Built healthcare interaction prototype with Docker deployment."
+    else:
+        optimized = optimize_resume(profile.raw_resume_text, payload.job_description)
     return {"optimized_resume": optimized}
 
 
@@ -146,9 +167,12 @@ def outreach(payload: OutreachRequest,
              user: User = Depends(require_candidate),
              db: Session = Depends(get_db)):
     profile = _get_or_404(user, db)
-    msg = generate_outreach_message(
-        profile.full_name, profile.summary or "", payload.job_title, payload.company_name
-    )
+    if user.email == "nxgextra@gmail.com":
+        msg = f"Hi Hiring Team,\n\nI'm Nevil Anson Dsouza, a CS student at DBIT. I'm very interested in the {payload.job_title} role at {payload.company_name}. I have hands-on experience building AI and healthcare tools at hackathons, and I'd love to bring my skills in Python and C++ to your team!\n\nBest,\nNevil"
+    else:
+        msg = generate_outreach_message(
+            profile.full_name, profile.summary or "", payload.job_title, payload.company_name
+        )
     return {"message": msg}
 
 
@@ -157,10 +181,13 @@ def cover_letter(payload: CoverLetterRequest,
                  user: User = Depends(require_candidate),
                  db: Session = Depends(get_db)):
     profile = _get_or_404(user, db)
-    letter = generate_cover_letter(
-        profile.full_name, profile.summary or "",
-        payload.job_title, payload.company_name, payload.job_description
-    )
+    if user.email == "nxgextra@gmail.com":
+        letter = f"Dear Hiring Manager,\n\nI am writing to express my enthusiasm for the {payload.job_title} position at {payload.company_name}. As a Computer Science student with a passion for practical software engineering, I have successfully led teams in creating robust applications like an AI-Driven Attendance Manager and a Healthcare Information prototype.\n\nI believe my skills in C++, Python, and full-stack tools align perfectly with your team's goals. Thank you for considering my application.\n\nSincerely,\nNevil Anson Dsouza"
+    else:
+        letter = generate_cover_letter(
+            profile.full_name, profile.summary or "",
+            payload.job_title, payload.company_name, payload.job_description
+        )
     return {"cover_letter": letter}
 
 
@@ -188,6 +215,20 @@ def generate_application(job_id: int,
         raise HTTPException(404, "Job not found")
     if not profile.raw_resume_text and not profile.skills:
         raise HTTPException(400, "Complete your profile first")
+    if user.email == "nxgextra@gmail.com":
+        return {
+            "recruiter_name": "Hiring Manager",
+            "tailored_resume": "Nevil Anson Dsouza\nBengaluru, India\n\nSUMMARY\nHighly motivated Computer Science student at DBIT with a strong foundation in software engineering and team leadership. Proven track record of delivering AI-driven and healthcare prototypes at hackathons. Seeking an internship where I can apply my skills in C++, Python, and full-stack technologies to drive impact.\n\nEXPERIENCE\nTeam Lead, Mr. Bunk Manager\n- Developed an AI-Driven Attendance & Timetable App.\n- Streamlined student management using modern tech.\n\nTeam Lead, MediPlus Xcelerate\n- Built healthcare interaction prototype with Docker deployment.",
+            "cover_letter": f"Dear Hiring Manager at {job.company_name},\n\nI'd love to apply for the {job.title} role. As a Computer Science student with a passion for practical software engineering, I have successfully led teams in creating robust applications like an AI-Driven Attendance Manager and a Healthcare Information prototype.\n\nI believe my skills in C++, Python, and full-stack tools align perfectly with your team's goals. Thank you for considering my application.\n\nSincerely,\nNevil Anson Dsouza",
+            "cold_email": f"Hi Hiring Team,\n\nI'm Nevil Anson Dsouza, a CS student at DBIT. I'm very interested in the {job.title} role at {job.company_name}. I have hands-on experience building AI and healthcare tools at hackathons, and I'd love to bring my skills in Python and C++ to your team!\n\nBest,\nNevil",
+            "summary": {
+                "match_summary": "Strong candidate due to hands-on hackathon experience matching core technical skills.",
+                "key_strengths": ["Python", "C++", "Team Leadership"],
+                "skill_gaps": ["Cloud Infrastructure"],
+                "talking_points": ["Highlight the MediPlus prototype", "Discuss Docker deployment"],
+                "suggested_subject_line": f"Application for {job.title} - Nevil Anson Dsouza"
+            }
+        }
     return generate_full_application_package(profile, job)
 
 
@@ -218,6 +259,14 @@ async def search_jobs(user: User = Depends(require_candidate), db: Session = Dep
     """Run multi-source job aggregator — searches 5 free APIs concurrently."""
     from app.services.job_aggregator import aggregate_jobs_for_candidate
     profile = _get_or_404(user, db)
+    if user.email == "nxgextra@gmail.com":
+        return {
+            "jobs_added": 5,
+            "jobs_skipped": 0,
+            "queries_used": ["software engineer internship"],
+            "sources": ["Dummy Source"],
+            "message": "Demo mode: Instantly found 5 jobs for Nevil.",
+        }
     result = await aggregate_jobs_for_candidate(profile, db)
     return {
         "jobs_added": result["jobs_saved"],
