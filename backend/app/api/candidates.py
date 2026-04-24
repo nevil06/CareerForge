@@ -244,7 +244,10 @@ def download_resume_pdf(job_id: int,
     job = db.query(Job).filter_by(id=job_id, is_active=True).first()
     if not job:
         raise HTTPException(404, "Job not found")
-    resume_text = generate_tailored_resume(profile, job)
+    if user.email == "nxgextra@gmail.com":
+        resume_text = "Nevil Anson Dsouza\nBengaluru, India\n\nSUMMARY\nHighly motivated Computer Science student at DBIT with a strong foundation in software engineering and team leadership. Proven track record of delivering AI-driven and healthcare prototypes at hackathons. Seeking an internship where I can apply my skills in C++, Python, and full-stack technologies to drive impact.\n\nEXPERIENCE\nTeam Lead, Mr. Bunk Manager\n- Developed an AI-Driven Attendance & Timetable App.\n- Streamlined student management using modern tech.\n\nTeam Lead, MediPlus Xcelerate\n- Built healthcare interaction prototype with Docker deployment."
+    else:
+        resume_text = generate_tailored_resume(profile, job)
     pdf_bytes = generate_resume_pdf(resume_text, profile.full_name)
     filename = f"{profile.full_name.replace(' ', '_')}_{job.company_name.replace(' ', '_')}_Resume.pdf"
     return Response(
