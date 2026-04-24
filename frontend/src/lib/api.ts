@@ -4,21 +4,18 @@ const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
 });
 
-// Attach JWT from localStorage on every request
-api.interceptors.request.use((config) => {
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+import { supabase } from "./supabase";
+
+// Attach JWT from Supabase on every request
+api.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
+  }
   return config;
 });
 
 export default api;
-
-// ---- Auth ----
-export const register = (data: { email: string; password: string; role: string }) =>
-  api.post("/api/auth/register", data);
-
-export const login = (data: { email: string; password: string }) =>
-  api.post("/api/auth/login", data);
 
 // ---- Candidate ----
 export const getProfile = () => api.get("/api/candidates/profile");

@@ -44,33 +44,39 @@ function LoginContent() {
     setError("");
     setSuccess("");
     try {
+      const { supabase } = await import("@/lib/supabase");
+      
+      let actualRole = role;
       if (isRegister) {
-        await registerUser({ ...data, role });
-        setSuccess("Account created! Logging you in…");
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: data.email,
+          password: data.password,
+          options: {
+            data: { role },
+          },
+        });
+        if (signUpError) throw signUpError;
+        setSuccess("Account created! Redirecting to your dashboard…");
         await new Promise((r) => setTimeout(r, 800));
-      }
-      const res = await login(data);
-      setAuth(res.data.user, res.data.access_token);
-
-      // If logging in from a role-specific page, warn if role mismatch
-      const actualRole = res.data.user.role;
-      if (!isRegister && actualRole !== role) {
-        // Still log them in but redirect to their actual dashboard
-        setSuccess(`Signed in as ${actualRole}. Redirecting to your dashboard…`);
-        await new Promise((r) => setTimeout(r, 1200));
+      } else {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: data.email,
+          password: data.password,
+        });
+        if (signInError) throw signInError;
+        
+        // Let the store's onAuthStateChange handle syncing, but we can do local role checking
+        actualRole = signInData.user?.user_metadata?.role || "candidate";
+        if (actualRole !== role) {
+          setSuccess(`Signed in as ${actualRole}. Redirecting to your dashboard…`);
+          await new Promise((r) => setTimeout(r, 1200));
+        }
       }
 
       const path = actualRole === "company" ? "/company/dashboard" : "/candidate/dashboard";
       router.push(path);
     } catch (e: any) {
-      const detail = e.response?.data?.detail;
-      if (typeof detail === "string") {
-        setError(detail);
-      } else if (detail?.msg) {
-        setError(detail.msg);
-      } else {
-        setError(isRegister ? "Registration failed. Email may already be in use." : "Invalid email or password.");
-      }
+      setError(e.message || "Authentication failed. Please check your credentials.");
     }
   };
 

@@ -17,10 +17,14 @@ export const metadata: Metadata = {
   description: "AI-powered job matching for candidates and companies",
 };
 
+import AuthProvider from "@/components/layout/AuthProvider";
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${display.variable} ${sans.variable} font-sans`}>{children}</body>
+      <body className={`${display.variable} ${sans.variable} font-sans`}>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }
