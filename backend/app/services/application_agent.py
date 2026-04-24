@@ -15,6 +15,17 @@ from app.models.job import Job
 from app.core.config import settings
 
 
+def _strip_markdown(text: str) -> str:
+    """Remove any markdown formatting that the model might still produce."""
+    import re
+    text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)   # **bold**
+    text = re.sub(r'\*(.+?)\*', r'\1', text)         # *italic*
+    text = re.sub(r'#{1,6}\s+', '', text)             # ## headers
+    text = re.sub(r'`{1,3}', '', text)                # `code`
+    text = re.sub(r'^\s*[-*]\s+', '- ', text, flags=re.MULTILINE)  # normalize bullets
+    return text.strip()
+
+
 def _profile_text(candidate: CandidateProfile) -> str:
     exps = "\n".join(
         f"- {e.get('title')} at {e.get('company')} ({e.get('duration')}): {e.get('description')}"
@@ -61,6 +72,9 @@ Rules:
 - Use strong action verbs and quantify achievements where possible
 - Format as clean plain text with clear sections: Summary, Skills, Experience, Education
 - Keep it concise (1 page equivalent)
+- NO markdown, NO asterisks, NO hashtags, NO bullet symbols like * or #
+- Use plain dashes (-) for bullet points
+- Section headers in ALL CAPS followed by a colon
 
 === JOB ===
 {_job_text(job)}
@@ -68,15 +82,11 @@ Rules:
 === CANDIDATE PROFILE ===
 {_profile_text(candidate)}
 
-Return ONLY the resume text, no commentary."""
+Return ONLY the resume text, no commentary, no markdown."""
 
-    return _chat([{"role": "user", "content": prompt}],
-                 model=settings.GLM_CODER_MODEL, temperature=0.4)
+    return _strip_markdown(_chat([{"role": "user", "content": prompt}],
+                 model=settings.GLM_CODER_MODEL, temperature=0.4))
 
-
-# ---------------------------------------------------------------------------
-# 2. Cold Outreach Email
-# ---------------------------------------------------------------------------
 
 def generate_cold_email(candidate: CandidateProfile, job: Job,
                          recruiter_name: str = "") -> str:
@@ -91,6 +101,8 @@ Rules:
 - End with a clear call to action (schedule a call)
 - Do NOT use generic phrases like "I am writing to express my interest"
 - Tone: confident, warm, professional
+- NO markdown, NO asterisks, NO bold/italic formatting
+- Plain text only, natural paragraphs
 
 === JOB ===
 {_job_text(job)}
@@ -98,14 +110,10 @@ Rules:
 === CANDIDATE ===
 {_profile_text(candidate)}
 
-Return ONLY the email body (no subject line)."""
+Return ONLY the plain text email body, no subject line, no markdown."""
 
-    return _chat([{"role": "user", "content": prompt}], temperature=0.6)
+    return _strip_markdown(_chat([{"role": "user", "content": prompt}], temperature=0.6))
 
-
-# ---------------------------------------------------------------------------
-# 3. Cover Letter
-# ---------------------------------------------------------------------------
 
 def generate_cover_letter_for_job(candidate: CandidateProfile, job: Job) -> str:
     prompt = f"""Write a professional cover letter for {candidate.full_name} applying to {job.title} at {job.company_name}.
@@ -120,6 +128,8 @@ Rules:
 - Specific to this job, not generic
 - Reference actual skills from the job description
 - Professional but not stiff
+- NO markdown, NO asterisks, NO bold/italic formatting
+- Plain text only, natural paragraphs
 
 === JOB ===
 {_job_text(job)}
@@ -127,9 +137,9 @@ Rules:
 === CANDIDATE ===
 {_profile_text(candidate)}
 
-Return ONLY the cover letter text."""
+Return ONLY the plain text cover letter, no markdown."""
 
-    return _chat([{"role": "user", "content": prompt}], temperature=0.5)
+    return _strip_markdown(_chat([{"role": "user", "content": prompt}], temperature=0.5))
 
 
 # ---------------------------------------------------------------------------

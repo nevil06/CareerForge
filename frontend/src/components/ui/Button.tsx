@@ -8,16 +8,16 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants = {
-  primary: "bg-brand-500 hover:bg-brand-600 text-white shadow-sm",
-  outline: "border border-gray-300 hover:bg-gray-50 text-gray-700",
-  ghost: "hover:bg-gray-100 text-gray-700",
-  danger: "bg-red-500 hover:bg-red-600 text-white",
+  primary: "bg-soil text-cream shadow-leaf hover:-translate-y-0.5 hover:bg-moss",
+  outline: "border border-moss/20 bg-white/45 text-soil hover:-translate-y-0.5 hover:border-moss/40 hover:bg-white/80",
+  ghost: "text-moss hover:bg-moss/10",
+  danger: "bg-clay text-white shadow-sm hover:-translate-y-0.5 hover:bg-red-600",
 };
 
 const sizes = {
-  sm: "px-3 py-1.5 text-sm",
-  md: "px-4 py-2 text-sm",
-  lg: "px-6 py-3 text-base",
+  sm: "px-3.5 py-2 text-sm",
+  md: "px-5 py-2.5 text-sm",
+  lg: "px-7 py-3.5 text-base",
 };
 
 export default function Button({
@@ -28,7 +28,7 @@ export default function Button({
       {...props}
       disabled={disabled || loading}
       className={clsx(
-        "inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed",
+        "inline-flex items-center justify-center gap-2 rounded-[1.2rem] font-bold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-fern/20 disabled:cursor-not-allowed disabled:opacity-50",
         variants[variant],
         sizes[size],
         className,

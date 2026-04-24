@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import Sidebar from "@/components/layout/Sidebar";
+import { AppShell, PageHeader } from "@/components/layout/AppShell";
 import { Card, CardTitle } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
@@ -49,15 +49,18 @@ export default function CompanyJobsPage() {
   };
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <main className="flex-1 p-8 overflow-auto max-w-3xl">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Manage Jobs</h1>
-          <Button size="sm" onClick={() => setShowForm(!showForm)} className="gap-2">
+    <AppShell>
+      <div className="max-w-4xl">
+        <PageHeader
+          eyebrow="Role nursery"
+          title="Manage Jobs"
+          description="Post roles, shape requirements, and let the matching engine find candidate fit."
+          action={(
+            <Button size="sm" onClick={() => setShowForm(!showForm)} className="gap-2">
             <Plus size={16} /> Post Job
-          </Button>
-        </div>
+            </Button>
+          )}
+        />
 
         {showForm && (
           <Card className="mb-6">
@@ -70,22 +73,22 @@ export default function CompanyJobsPage() {
                 { label: "Required Skills (comma-separated)", key: "required_skills" },
               ].map(({ label, key, required }) => (
                 <div key={key}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+                  <label className="organic-label">{label}</label>
                   <input {...register(key as keyof JobForm, { required })}
-                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                    className="organic-input" />
                 </div>
               ))}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Min Experience (yrs)</label>
+                  <label className="organic-label">Min Experience (yrs)</label>
                   <input type="number" {...register("experience_years_min")}
-                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                    className="organic-input" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Level</label>
+                  <label className="organic-label">Level</label>
                   <select {...register("experience_level")}
-                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    className="organic-input">
                     <option value="">Any</option>
                     <option value="junior">Junior</option>
                     <option value="mid">Mid</option>
@@ -95,9 +98,9 @@ export default function CompanyJobsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label className="organic-label">Description</label>
                 <textarea rows={4} {...register("description")}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                  className="organic-input" />
               </div>
 
               <div className="flex gap-3">
@@ -110,15 +113,15 @@ export default function CompanyJobsPage() {
 
         <div className="space-y-3">
           {jobs.map((j) => (
-            <Card key={j.id} className="flex items-center justify-between">
+            <Card key={j.id} className="flex items-center justify-between transition-all hover:-translate-y-0.5 hover:shadow-leaf">
               <div>
-                <p className="font-semibold text-gray-900">{j.title}</p>
-                {j.location && <p className="text-sm text-gray-500">{j.location}</p>}
+                <p className="font-display text-xl font-bold text-soil">{j.title}</p>
+                {j.location && <p className="text-sm font-semibold text-stone-500">{j.location}</p>}
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant="success">Active</Badge>
                 <button onClick={() => handleDelete(j.id)}
-                  className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                  className="rounded-xl p-2 text-stone-400 transition-colors hover:bg-clay/10 hover:text-clay"
                   aria-label="Delete job">
                   <Trash2 size={16} />
                 </button>
@@ -126,10 +129,10 @@ export default function CompanyJobsPage() {
             </Card>
           ))}
           {jobs.length === 0 && (
-            <Card className="text-center text-gray-400 py-12">No jobs posted yet.</Card>
+            <Card className="py-12 text-center text-stone-500">No jobs posted yet.</Card>
           )}
         </div>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

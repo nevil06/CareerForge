@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import Sidebar from "@/components/layout/Sidebar";
+import { AppShell, PageHeader } from "@/components/layout/AppShell";
 import { Card, CardTitle } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
@@ -30,20 +30,20 @@ function StepIndicator({ current }: { current: Step }) {
         const active = s.key === current && current !== "done";
         return (
           <div key={s.key} className={clsx(
-            "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all",
-            done   && "bg-green-50 text-green-700",
-            active && "bg-brand-50 text-brand-700 font-medium",
-            !done && !active && "text-gray-300",
+            "flex items-center gap-3 rounded-[1.25rem] px-4 py-2.5 text-sm transition-all",
+            done && "bg-fern/15 text-moss",
+            active && "bg-sun/20 font-bold text-amber-800",
+            !done && !active && "text-stone-300",
           )}>
-            {done   && <CheckCircle size={16} className="text-green-500 flex-shrink-0" />}
-            {active && <Loader2 size={16} className="animate-spin text-brand-500 flex-shrink-0" />}
-            {!done && !active && <div className="w-4 h-4 rounded-full border-2 border-gray-200 flex-shrink-0" />}
+            {done && <CheckCircle size={16} className="flex-shrink-0 text-fern" />}
+            {active && <Loader2 size={16} className="flex-shrink-0 animate-spin text-clay" />}
+            {!done && !active && <div className="h-4 w-4 flex-shrink-0 rounded-full border-2 border-stone-200" />}
             {s.label}
           </div>
         );
       })}
       {current === "error" && (
-        <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm bg-red-50 text-red-600">
+        <div className="flex items-center gap-3 rounded-[1.25rem] bg-clay/10 px-4 py-2.5 text-sm font-semibold text-clay">
           ✕ Something went wrong. Please try again.
         </div>
       )}
@@ -101,42 +101,45 @@ export default function ProfilePage() {
   const isProcessing = !["idle", "done", "error"].includes(step);
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <main className="flex-1 p-8 overflow-auto max-w-3xl">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">My Profile</h1>
+    <AppShell>
+      <div className="max-w-4xl">
+        <PageHeader
+          eyebrow="Resume soil"
+          title="My Profile"
+          description="Upload a resume and let the agent extract the structured profile that powers your matches."
+        />
 
         {/* Resume Upload */}
         <Card className="mb-6">
           <div className="flex items-center gap-2 mb-4">
-            <FileText size={18} className="text-brand-500" />
+            <FileText size={18} className="text-moss" />
             <CardTitle>Upload Resume</CardTitle>
           </div>
 
           <div
             {...getRootProps()}
             className={clsx(
-              "border-2 border-dashed rounded-xl p-8 text-center transition-colors",
-              isDragActive    && "border-brand-500 bg-brand-50",
-              isProcessing    && "border-gray-200 bg-gray-50 cursor-not-allowed",
-              !isDragActive && !isProcessing && "border-gray-200 hover:border-brand-300 cursor-pointer",
+              "rounded-[2rem] border-2 border-dashed p-10 text-center transition-all",
+              isDragActive && "border-moss bg-fern/10",
+              isProcessing && "cursor-not-allowed border-stone-200 bg-white/35",
+              !isDragActive && !isProcessing && "cursor-pointer border-moss/20 hover:-translate-y-0.5 hover:border-moss/45 hover:bg-white/45",
             )}
           >
             <input {...getInputProps()} />
             {isProcessing ? (
-              <Loader2 className="mx-auto mb-2 text-brand-400 animate-spin" size={32} />
+              <Loader2 className="mx-auto mb-2 animate-spin text-moss" size={32} />
             ) : step === "done" ? (
-              <CheckCircle className="mx-auto mb-2 text-green-500" size={32} />
+              <CheckCircle className="mx-auto mb-2 text-fern" size={32} />
             ) : (
-              <Upload className="mx-auto mb-2 text-gray-400" size={32} />
+              <Upload className="mx-auto mb-2 text-stone-400" size={32} />
             )}
-            <p className="text-sm font-medium text-gray-600">
+            <p className="text-sm font-bold text-soil">
               {isProcessing ? "Processing your resume…" :
                step === "done" ? "Resume parsed successfully! Drop another to re-upload." :
                step === "error" ? "Upload failed — drop your file again to retry" :
                "Drop your PDF or DOCX here, or click to browse"}
             </p>
-            <p className="text-xs text-gray-400 mt-1">PDF or DOCX · max 10MB</p>
+            <p className="mt-1 text-xs font-semibold text-stone-400">PDF or DOCX · max 10MB</p>
           </div>
 
           <StepIndicator current={step} />
@@ -146,7 +149,7 @@ export default function ProfilePage() {
         {profile && (
           <Card>
             <div className="flex items-center gap-2 mb-4">
-              <User size={18} className="text-brand-500" />
+              <User size={18} className="text-moss" />
               <CardTitle>Profile Details</CardTitle>
             </div>
 
@@ -158,30 +161,30 @@ export default function ProfilePage() {
                 { label: "Experience (years)", key: "experience_years", type: "number" },
               ].map(({ label, key, type }) => (
                 <div key={key}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+                  <label className="organic-label">{label}</label>
                   <input
                     type={type || "text"}
                     value={profile[key] || ""}
                     onChange={(e) => setProfile({ ...profile, [key]: e.target.value })}
-                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    className="organic-input"
                   />
                 </div>
               ))}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Summary</label>
+                <label className="organic-label">Summary</label>
                 <textarea
                   rows={3}
                   value={profile.summary || ""}
                   onChange={(e) => setProfile({ ...profile, summary: e.target.value })}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="organic-input"
                 />
               </div>
 
               {/* Skills */}
               {profile.skills?.length > 0 && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="organic-label">
                     Skills extracted by AI
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -195,7 +198,7 @@ export default function ProfilePage() {
               {/* Preferred roles */}
               {profile.preferred_roles?.length > 0 && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="organic-label">
                     Preferred Roles
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -217,13 +220,13 @@ export default function ProfilePage() {
 
         {/* Empty state — no profile yet */}
         {!profile && step === "idle" && (
-          <Card className="text-center py-12 text-gray-400">
-            <Sparkles className="mx-auto mb-3 text-gray-300" size={36} />
-            <p className="font-medium">No profile yet</p>
-            <p className="text-sm mt-1">Upload your resume above and AI will fill everything in automatically.</p>
+          <Card className="py-12 text-center">
+            <Sparkles className="mx-auto mb-3 text-fern" size={36} />
+            <p className="font-display text-2xl font-bold text-soil">No profile yet</p>
+            <p className="mt-1 text-sm text-stone-500">Upload your resume above and AI will fill everything in automatically.</p>
           </Card>
         )}
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

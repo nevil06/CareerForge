@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import Sidebar from "@/components/layout/Sidebar";
+import { AppShell, PageHeader } from "@/components/layout/AppShell";
 import { Card, CardTitle } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { optimizeResume, generateOutreach, generateCoverLetter } from "@/lib/api";
@@ -11,17 +11,17 @@ function OutputBox({ text }: { text: string }) {
   if (!text) return null;
   return (
     <div className="mt-4 relative">
-      <pre className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm whitespace-pre-wrap text-gray-700 max-h-64 overflow-auto">
+      <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-[1.35rem] border border-white/70 bg-cream/70 p-4 text-sm leading-6 text-soil">
         {text}
       </pre>
       <button
         onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
-        className="absolute top-2 right-2 p-1.5 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-gray-500"
+        className="absolute right-2 top-2 rounded-xl border border-white/70 bg-white/75 p-1.5 text-stone-500 hover:bg-white"
         aria-label="Copy to clipboard"
       >
         <Copy size={14} />
       </button>
-      {copied && <span className="absolute top-2 right-10 text-xs text-green-600 font-medium">Copied!</span>}
+      {copied && <span className="absolute right-10 top-2 text-xs font-bold text-moss">Copied!</span>}
     </div>
   );
 }
@@ -54,24 +54,24 @@ export default function AIToolsPage() {
   };
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <main className="flex-1 p-8 overflow-auto max-w-3xl">
-        <div className="flex items-center gap-2 mb-6">
-          <Sparkles className="text-brand-500" size={24} />
-          <h1 className="text-2xl font-bold text-gray-900">AI Tools</h1>
-        </div>
+    <AppShell>
+      <div className="max-w-4xl">
+        <PageHeader
+          eyebrow="Agent workbench"
+          title="AI Tools"
+          description="Turn a job description into tailored resume copy, recruiter outreach, and cover letters."
+        />
 
         {/* Shared inputs */}
         <Card className="mb-6">
           <CardTitle>Job Details</CardTitle>
           <div className="mt-4 space-y-3">
             <input placeholder="Job Title" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)}
-              className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+              className="organic-input" />
             <input placeholder="Company Name" value={companyName} onChange={(e) => setCompanyName(e.target.value)}
-              className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+              className="organic-input" />
             <textarea rows={4} placeholder="Paste job description here…" value={jd} onChange={(e) => setJd(e.target.value)}
-              className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+              className="organic-input" />
           </div>
         </Card>
 
@@ -85,7 +85,7 @@ export default function AIToolsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>{label}</CardTitle>
-                <p className="text-sm text-gray-500 mt-0.5">{desc}</p>
+                <p className="mt-0.5 text-sm text-stone-500">{desc}</p>
               </div>
               <Button size="sm" loading={loading === key} onClick={() => run(key)}>
                 Generate
@@ -94,7 +94,7 @@ export default function AIToolsPage() {
             <OutputBox text={output} />
           </Card>
         ))}
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

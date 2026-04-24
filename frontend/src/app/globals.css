@@ -2,6 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --soil: #2d2416;
+  --cream: #faf6ef;
+  --clay: #a0785a;
+}
+
 body {
   @apply bg-gray-50 text-gray-900;
 }
+
+/* Custom color tokens used by Sidebar */
+.bg-soil    { background-color: var(--soil); }
+.text-soil  { color: var(--soil); }
+.text-cream { color: var(--cream); }
+.bg-cream\/55 { background-color: rgba(250, 246, 239, 0.55); }
+.bg-cream\/80 { background-color: rgba(250, 246, 239, 0.80); }
+.text-clay  { color: var(--clay); }
+.bg-clay\/10 { background-color: rgba(160, 120, 90, 0.10); }
+.shadow-organic { box-shadow: 0 4px 24px rgba(45, 36, 22, 0.08); }
+.shadow-leaf    { box-shadow: 0 2px 12px rgba(45, 36, 22, 0.18); }
+.font-display   { font-family: inherit; }

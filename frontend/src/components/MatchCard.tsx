@@ -6,6 +6,7 @@ import { MapPin, Building2, ExternalLink, Sparkles } from "lucide-react";
 
 interface Match {
   id: number;
+  job_id: number;
   job_title: string;
   company_name: string;
   score_total: number;
@@ -20,12 +21,12 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
   const pct = Math.round(value * 100);
   return (
     <div>
-      <div className="flex justify-between text-xs text-gray-500 mb-1">
+      <div className="mb-1 flex justify-between text-xs font-semibold text-stone-500">
         <span>{label}</span><span>{pct}%</span>
       </div>
-      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+      <div className="h-2 overflow-hidden rounded-full bg-sage/60">
         <div
-          className="h-full bg-brand-500 rounded-full transition-all"
+          className="h-full rounded-full bg-gradient-to-r from-moss via-fern to-sun transition-all"
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -38,11 +39,12 @@ export default function MatchCard({ match }: { match: Match }) {
   const variant = pct >= 70 ? "success" : pct >= 50 ? "warning" : "default";
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className="group relative overflow-hidden transition-all hover:-translate-y-1 hover:shadow-leaf">
+      <div className="absolute -right-10 -top-10 h-28 w-28 rounded-[55%_45%_60%_40%] bg-fern/15 transition-transform group-hover:scale-125" />
       <div className="flex items-start justify-between mb-3">
         <div>
-          <h4 className="font-semibold text-gray-900">{match.job_title}</h4>
-          <div className="flex items-center gap-1 text-sm text-gray-500 mt-0.5">
+          <h4 className="relative font-display text-xl font-bold text-soil">{match.job_title}</h4>
+          <div className="relative mt-1 flex items-center gap-1 text-sm font-semibold text-stone-500">
             <Building2 size={14} />{match.company_name}
           </div>
         </div>
@@ -58,7 +60,7 @@ export default function MatchCard({ match }: { match: Match }) {
 
       {match.matched_skills.length > 0 && (
         <div className="mb-3">
-          <p className="text-xs text-gray-400 mb-1.5">Matched skills</p>
+          <p className="mb-1.5 text-xs font-bold uppercase tracking-[0.16em] text-stone-400">Matched skills</p>
           <div className="flex flex-wrap gap-1.5">
             {match.matched_skills.slice(0, 6).map((s) => (
               <Badge key={s} variant="success">{s}</Badge>
@@ -69,7 +71,7 @@ export default function MatchCard({ match }: { match: Match }) {
 
       {match.missing_skills.length > 0 && (
         <div className="mb-4">
-          <p className="text-xs text-gray-400 mb-1.5">Missing skills</p>
+          <p className="mb-1.5 text-xs font-bold uppercase tracking-[0.16em] text-stone-400">Missing skills</p>
           <div className="flex flex-wrap gap-1.5">
             {match.missing_skills.slice(0, 4).map((s) => (
               <Badge key={s} variant="danger">{s}</Badge>

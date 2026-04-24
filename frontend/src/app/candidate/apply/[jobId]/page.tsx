@@ -7,7 +7,7 @@ import Button from "@/components/ui/Button";
 import api from "@/lib/api";
 import {
   FileText, Mail, BookOpen, Sparkles, Copy, CheckCircle,
-  Loader2, ChevronDown, ChevronUp, ExternalLink,
+  Loader2, ChevronDown, ChevronUp, ExternalLink, Download,
 } from "lucide-react";
 
 function CopyButton({ text }: { text: string }) {
@@ -185,7 +185,11 @@ export default function ApplyPage() {
             <Section icon={BookOpen} title="Cover Letter"         content={pkg.cover_letter}     />
 
             <div className="flex gap-3 mt-4">
-              <Button variant="outline" className="flex-1" onClick={() => setPkg(null)}>
+              <Button variant="outline" className="flex-1 gap-2"
+                onClick={() => window.open(`http://localhost:8001/api/candidates/apply/${jobId}/resume.pdf`, "_blank")}>
+                <Download size={16} /> Download Resume PDF
+              </Button>
+              <Button variant="outline" onClick={() => setPkg(null)}>
                 Regenerate
               </Button>
               {job?.application_link && (

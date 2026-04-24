@@ -2,7 +2,7 @@ import { clsx } from "clsx";
 
 export function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={clsx("bg-white rounded-2xl shadow-sm border border-gray-100 p-6", className)}>
+    <div className={clsx("organic-panel p-6 animate-rise-in", className)}>
       {children}
     </div>
   );
@@ -13,5 +13,5 @@ export function CardHeader({ children }: { children: React.ReactNode }) {
 }
 
 export function CardTitle({ children }: { children: React.ReactNode }) {
-  return <h3 className="text-lg font-semibold text-gray-900">{children}</h3>;
+  return <h3 className="font-display text-xl font-bold text-soil">{children}</h3>;
 }

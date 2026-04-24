@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.deps import require_candidate, get_current_user
@@ -176,7 +177,6 @@ def get_notifications(user: User = Depends(require_candidate), db: Session = Dep
 
 @router.post("/apply/{job_id}")
 def generate_application(job_id: int,
-                          recruiter_name: str = "",
                           user: User = Depends(require_candidate),
                           db: Session = Depends(get_db)):
     """Generate full application package for a specific job."""
@@ -188,21 +188,43 @@ def generate_application(job_id: int,
         raise HTTPException(404, "Job not found")
     if not profile.raw_resume_text and not profile.skills:
         raise HTTPException(400, "Complete your profile first")
-    package = generate_full_application_package(profile, job, recruiter_name)
-    return package
+    return generate_full_application_package(profile, job)
+
+
+@router.get("/apply/{job_id}/resume.pdf")
+def download_resume_pdf(job_id: int,
+                         user: User = Depends(require_candidate),
+                         db: Session = Depends(get_db)):
+    """Generate tailored resume as a downloadable PDF."""
+    from app.services.application_agent import generate_tailored_resume
+    from app.services.pdf_generator import generate_resume_pdf
+    from app.models.job import Job
+    profile = _get_or_404(user, db)
+    job = db.query(Job).filter_by(id=job_id, is_active=True).first()
+    if not job:
+        raise HTTPException(404, "Job not found")
+    resume_text = generate_tailored_resume(profile, job)
+    pdf_bytes = generate_resume_pdf(resume_text, profile.full_name)
+    filename = f"{profile.full_name.replace(' ', '_')}_{job.company_name.replace(' ', '_')}_Resume.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/search-jobs")
 async def search_jobs(user: User = Depends(require_candidate), db: Session = Depends(get_db)):
-    """Run AI job search agent — generates queries from resume, fetches real jobs, extracts skills."""
-    from app.services.job_agent import run_job_search_agent
+    """Run multi-source job aggregator — searches 5 free APIs concurrently."""
+    from app.services.job_aggregator import aggregate_jobs_for_candidate
     profile = _get_or_404(user, db)
-    result = await run_job_search_agent(profile, db)
+    result = await aggregate_jobs_for_candidate(profile, db)
     return {
         "jobs_added": result["jobs_saved"],
         "jobs_skipped": result["jobs_skipped"],
         "queries_used": result["queries_used"],
-        "message": f"Agent searched {len(result['queries_used'])} queries, found {result['total_fetched']} jobs, added {result['jobs_saved']} new ones.",
+        "sources": result["sources"],
+        "message": f"Searched {len(result['sources'])} sources with {len(result['queries_used'])} queries → {result['total_fetched']} jobs found, {result['jobs_saved']} new.",
     }
 
 

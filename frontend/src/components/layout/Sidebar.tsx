@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { clsx } from "clsx";
 import { useAuthStore } from "@/lib/store";
 import {
-  LayoutDashboard, Briefcase, User, Bell, FileText, LogOut, Sparkles,
+  LayoutDashboard, Briefcase, User, Bell, LogOut, Sparkles, Sprout,
 } from "lucide-react";
 
 const candidateLinks = [
@@ -17,7 +17,9 @@ const candidateLinks = [
 
 const companyLinks = [
   { href: "/company/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/company/profile", label: "Company Profile", icon: User },
   { href: "/company/jobs", label: "My Jobs", icon: Briefcase },
+  { href: "/company/candidates", label: "Find Candidates", icon: User },
   { href: "/company/notifications", label: "Notifications", icon: Bell },
 ];
 
@@ -28,19 +30,45 @@ export default function Sidebar() {
   const links = user?.role === "company" ? companyLinks : candidateLinks;
 
   return (
-    <aside className="w-64 min-h-screen bg-white border-r border-gray-100 flex flex-col">
-      <div className="px-6 py-5 border-b border-gray-100">
-        <span className="text-lg font-bold text-brand-600">⚡ Carrier-Forge</span>
+    <>
+    <div className="fixed inset-x-3 bottom-3 z-30 rounded-[1.5rem] border border-white/70 bg-cream/80 p-2 shadow-organic backdrop-blur-xl lg:hidden">
+      <nav className="flex items-center justify-around">
+        {links.slice(0, 5).map(({ href, label, icon: Icon }) => (
+          <Link
+            key={href}
+            href={href}
+            aria-label={label}
+            className={clsx(
+              "grid h-11 w-11 place-items-center rounded-[1rem] transition-colors",
+              pathname === href ? "bg-soil text-cream" : "text-stone-500 hover:bg-white/70",
+            )}
+          >
+            <Icon size={18} />
+          </Link>
+        ))}
+      </nav>
+    </div>
+    <aside className="relative z-20 hidden min-h-screen w-72 flex-col border-r border-white/60 bg-cream/55 shadow-organic backdrop-blur-xl lg:flex">
+      <div className="px-6 py-6">
+        <div className="flex items-center gap-3">
+          <div className="grid h-12 w-12 place-items-center rounded-[1.35rem] bg-soil text-cream shadow-leaf">
+            <Sprout size={22} />
+          </div>
+          <div>
+            <span className="font-display text-xl font-black text-soil">Carrier-Forge</span>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-clay">Hiring agent</p>
+          </div>
+        </div>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 space-y-2 px-4 py-3">
         {links.map(({ href, label, icon: Icon }) => (
           <Link key={href} href={href}
             className={clsx(
-              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
+              "group flex items-center gap-3 rounded-[1.25rem] px-4 py-3 text-sm font-bold transition-all",
               pathname === href
-                ? "bg-brand-50 text-brand-600"
-                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                ? "bg-soil text-cream shadow-leaf"
+                : "text-stone-600 hover:-translate-y-0.5 hover:bg-white/65 hover:text-soil",
             )}>
             <Icon size={18} />
             {label}
@@ -48,14 +76,18 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="px-3 py-4 border-t border-gray-100">
-        <div className="px-3 py-2 text-xs text-gray-400 truncate">{user?.email}</div>
+      <div className="m-4 rounded-[1.75rem] border border-white/70 bg-white/45 p-3">
+        <div className="px-3 py-1">
+          <p className="text-xs font-semibold text-stone-500 truncate">{user?.email || "Guest"}</p>
+          <p className="text-xs text-stone-400 capitalize">{user?.role}</p>
+        </div>
         <button
-          onClick={() => { logout(); router.push("/"); }}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 w-full transition-colors">
+          onClick={() => { logout(); router.replace("/"); }}
+          className="flex w-full items-center gap-3 rounded-[1.15rem] px-3 py-2.5 text-sm font-bold text-stone-600 transition-colors hover:bg-red-50 hover:text-red-600">
           <LogOut size={18} /> Sign Out
         </button>
       </div>
     </aside>
+    </>
   );
 }

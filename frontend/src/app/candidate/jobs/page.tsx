@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import Sidebar from "@/components/layout/Sidebar";
+import { AppShell, PageHeader } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -34,11 +34,9 @@ export default function JobsPage() {
     setSearchMsg("");
     try {
       const r = await api.post("/api/candidates/search-jobs");
-      const { jobs_added, queries_used, message } = r.data;
+      const { jobs_added, queries_used, sources, message } = r.data;
       setSearchMsg(`✅ ${message}`);
-      if (queries_used?.length) {
-        console.log("Queries used:", queries_used);
-      }
+      console.log("Sources:", sources, "Queries:", queries_used);
       await fetchJobs(q); // refresh list
     } catch (e: any) {
       const msg = e.response?.data?.detail;
@@ -53,12 +51,13 @@ export default function JobsPage() {
   };
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <main className="flex-1 p-8 overflow-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Browse Jobs</h1>
-          <Button
+    <AppShell>
+        <PageHeader
+          eyebrow="Opportunity stream"
+          title="Browse Jobs"
+          description="Search the full job pool or ask the agent to branch outward from your resume."
+          action={(
+            <Button
             size="sm"
             onClick={handleResumeSearch}
             loading={searching}
@@ -66,12 +65,13 @@ export default function JobsPage() {
           >
             <Sparkles size={16} />
             Search from my Resume
-          </Button>
-        </div>
+            </Button>
+          )}
+        />
 
         {searchMsg && (
-          <div className={`mb-4 px-4 py-3 rounded-xl text-sm font-medium ${
-            searchMsg.startsWith("✅") ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"
+          <div className={`mb-4 rounded-[1.35rem] px-4 py-3 text-sm font-bold ${
+            searchMsg.startsWith("✅") ? "bg-fern/15 text-moss" : "bg-sun/25 text-amber-800"
           }`}>
             {searchMsg}
           </div>
@@ -80,13 +80,13 @@ export default function JobsPage() {
         {/* Search bar */}
         <div className="flex gap-3 mb-6">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={16} />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               placeholder="Search by title, skill or company…"
-              className="w-full pl-9 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="organic-input pl-11"
             />
           </div>
           <Button onClick={handleSearch} loading={loading}>Search</Button>
@@ -94,46 +94,46 @@ export default function JobsPage() {
 
         {/* Results */}
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-gray-400 gap-3">
+          <div className="flex items-center justify-center gap-3 py-20 text-stone-500">
             <Loader2 className="animate-spin" size={20} />
-            Loading jobs…
+            Loading jobs...
           </div>
         ) : jobs.length === 0 ? (
-          <Card className="text-center py-16 text-gray-400">
-            <Sparkles className="mx-auto mb-3 text-gray-300" size={36} />
-            <p className="font-medium text-gray-600">No jobs yet</p>
-            <p className="text-sm mt-1 mb-4">Click "Search from my Resume" to find real jobs matching your skills.</p>
+          <Card className="py-16 text-center">
+            <Sparkles className="mx-auto mb-3 text-fern" size={36} />
+            <p className="font-display text-2xl font-bold text-soil">No jobs yet</p>
+            <p className="mb-4 mt-1 text-sm text-stone-500">Click "Search from my Resume" to find real jobs matching your skills.</p>
             <Button size="sm" onClick={handleResumeSearch} loading={searching} className="gap-2 mx-auto">
               <Sparkles size={14} /> Search from my Resume
             </Button>
           </Card>
         ) : (
           <>
-            <p className="text-sm text-gray-500 mb-4">{jobs.length} jobs found</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <p className="mb-4 text-sm font-bold text-stone-500">{jobs.length} jobs found</p>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               {jobs.map((job) => (
-                <Card key={job.id} className="hover:shadow-md transition-shadow flex flex-col">
+                <Card key={job.id} className="group flex flex-col overflow-hidden transition-all hover:-translate-y-1 hover:shadow-leaf">
                   <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-semibold text-gray-900 leading-tight">{job.title}</h4>
+                    <h4 className="font-display text-xl font-bold leading-tight text-soil">{job.title}</h4>
                     <Badge variant={job.source === "external" ? "warning" : "default"} className="ml-2 flex-shrink-0">
                       {job.source}
                     </Badge>
                   </div>
 
-                  <div className="flex items-center gap-1 text-sm text-gray-500 mb-1">
+                  <div className="mb-1 flex items-center gap-1 text-sm font-semibold text-stone-500">
                     <Building2 size={13} className="flex-shrink-0" />
                     <span className="truncate">{job.company_name}</span>
                   </div>
 
                   {job.location && (
-                    <div className="flex items-center gap-1 text-sm text-gray-500 mb-3">
+                    <div className="mb-3 flex items-center gap-1 text-sm font-semibold text-stone-500">
                       <MapPin size={13} className="flex-shrink-0" />
                       <span className="truncate">{job.location}</span>
                     </div>
                   )}
 
                   {job.salary_min && (
-                    <p className="text-xs text-green-600 font-medium mb-2">
+                    <p className="mb-2 text-xs font-bold text-moss">
                       ${(job.salary_min / 1000).toFixed(0)}k
                       {job.salary_max ? ` – $${(job.salary_max / 1000).toFixed(0)}k` : "+"}
                     </p>
@@ -164,7 +164,6 @@ export default function JobsPage() {
             </div>
           </>
         )}
-      </main>
-    </div>
+    </AppShell>
   );
 }

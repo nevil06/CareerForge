@@ -62,7 +62,41 @@ When embeddings available:
 
 ---
 
-## Setup Guide
+## Docker Setup (Recommended)
+
+The easiest way to run Carrier-Forge is using Docker Compose. This automatically spins up the frontend, backend, and MySQL database without needing to install Python, Node.js, or MySQL locally.
+
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows/Mac) or Docker Engine + Docker Compose (Linux).
+
+### Step 1 — Configure Environment Variables
+Create an `.env` file in the root directory (`d:\Projects\Carrier-Forge`) with your API keys:
+
+```env
+ZHIPU_API_KEY=your-zhipuai-key
+BREVO_API_KEY=xkeysib-...
+BREVO_SENDER_EMAIL=your-verified@email.com
+BREVO_SENDER_NAME=HireAI
+MYSQL_ROOT_PASSWORD=your_secure_password
+```
+
+### Step 2 — Start the Containers
+Open your terminal in the root directory and run:
+```bash
+docker-compose up --build -d
+```
+
+### Step 3 — Access the Application
+- **Frontend**: [http://localhost:3000](http://localhost:3000)
+- **Backend API**: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+> **Note**: The MySQL database `carrier_forge` is automatically created, and the backend will automatically generate all necessary tables upon startup. No manual migrations are required.
+
+To view logs, run `docker-compose logs -f`. To stop the application, run `docker-compose down`.
+
+---
+
+## Manual Local Setup Guide
 
 ### Prerequisites
 

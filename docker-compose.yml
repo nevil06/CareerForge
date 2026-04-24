@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password}
+      MYSQL_DATABASE: carrier_forge
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      # Use the docker service name 'db' to connect to the database
+      DATABASE_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-root_password}@db:3306/carrier_forge
+      SECRET_KEY: ${SECRET_KEY:-change-me-to-a-long-random-string}
+      ZHIPU_API_KEY: ${ZHIPU_API_KEY}
+      BREVO_API_KEY: ${BREVO_API_KEY}
+      BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL}
+      BREVO_SENDER_NAME: ${BREVO_SENDER_NAME:-Carrier-Forge}
+      JOB_API_APP_ID: ${JOB_API_APP_ID}
+      JOB_API_KEY: ${JOB_API_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Mount uploaded resumes or temp files if necessary (adjust path as needed)
+      - ./backend/temp:/app/temp
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Note: if API is on localhost:8000 on the user's browser, 
+        # the client needs to connect to localhost:8000, not 'backend:8000'
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
