@@ -174,6 +174,38 @@ def get_notifications(user: User = Depends(require_candidate), db: Session = Dep
     ).limit(30).all()
 
 
+@router.post("/apply/{job_id}")
+def generate_application(job_id: int,
+                          recruiter_name: str = "",
+                          user: User = Depends(require_candidate),
+                          db: Session = Depends(get_db)):
+    """Generate full application package for a specific job."""
+    from app.services.application_agent import generate_full_application_package
+    from app.models.job import Job
+    profile = _get_or_404(user, db)
+    job = db.query(Job).filter_by(id=job_id, is_active=True).first()
+    if not job:
+        raise HTTPException(404, "Job not found")
+    if not profile.raw_resume_text and not profile.skills:
+        raise HTTPException(400, "Complete your profile first")
+    package = generate_full_application_package(profile, job, recruiter_name)
+    return package
+
+
+@router.post("/search-jobs")
+async def search_jobs(user: User = Depends(require_candidate), db: Session = Depends(get_db)):
+    """Run AI job search agent — generates queries from resume, fetches real jobs, extracts skills."""
+    from app.services.job_agent import run_job_search_agent
+    profile = _get_or_404(user, db)
+    result = await run_job_search_agent(profile, db)
+    return {
+        "jobs_added": result["jobs_saved"],
+        "jobs_skipped": result["jobs_skipped"],
+        "queries_used": result["queries_used"],
+        "message": f"Agent searched {len(result['queries_used'])} queries, found {result['total_fetched']} jobs, added {result['jobs_saved']} new ones.",
+    }
+
+
 @router.patch("/notifications/{notif_id}/read")
 def mark_read(notif_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     n = db.query(Notification).filter_by(id=notif_id, user_id=user.id).first()

@@ -2,7 +2,7 @@
 import { Card } from "./ui/Card";
 import Badge from "./ui/Badge";
 import Button from "./ui/Button";
-import { MapPin, Building2, ExternalLink } from "lucide-react";
+import { MapPin, Building2, ExternalLink, Sparkles } from "lucide-react";
 
 interface Match {
   id: number;
@@ -79,9 +79,21 @@ export default function MatchCard({ match }: { match: Match }) {
       )}
 
       {match.application_link && (
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" className="flex-1 gap-2"
+            onClick={() => window.location.href = `/candidate/apply/${match.job_id}`}>
+            <Sparkles size={14} /> Apply with AI
+          </Button>
+          <Button size="sm" variant="ghost" className="gap-2"
+            onClick={() => window.open(match.application_link, "_blank")}>
+            <ExternalLink size={14} />
+          </Button>
+        </div>
+      )}
+      {!match.application_link && (
         <Button size="sm" variant="outline" className="w-full gap-2"
-          onClick={() => window.open(match.application_link, "_blank")}>
-          <ExternalLink size={14} /> Apply Now
+          onClick={() => window.location.href = `/candidate/apply/${match.job_id}`}>
+          <Sparkles size={14} /> Apply with AI
         </Button>
       )}
     </Card>

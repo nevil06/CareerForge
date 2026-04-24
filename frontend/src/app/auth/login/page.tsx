@@ -18,20 +18,35 @@ export default function LoginPage() {
   const role = params.get("role") || "candidate";
   const [isRegister, setIsRegister] = useState(false);
   const [error, setError] = useState("");
-  const { register, handleSubmit, formState: { isSubmitting } } = useForm<FormData>();
+  const { register, handleSubmit, getValues, formState: { isSubmitting } } = useForm<FormData>();
   const setAuth = useAuthStore((s) => s.setAuth);
 
   const onSubmit = async (data: FormData) => {
     setError("");
     try {
       if (isRegister) {
+        // Register first
         await registerUser({ ...data, role });
+        // Then auto-login with same credentials
+        const res = await login({ email: data.email, password: data.password });
+        setAuth(res.data.user, res.data.access_token);
+        redirect(res.data.user.role);
+      } else {
+        const res = await login(data);
+        setAuth(res.data.user, res.data.access_token);
+        redirect(res.data.user.role);
       }
-      const res = await login(data);
-      setAuth(res.data.user, res.data.access_token);
-      router.push(res.data.user.role === "company" ? "/company/dashboard" : "/candidate/dashboard");
     } catch (e: any) {
-      setError(e.response?.data?.detail || "Something went wrong");
+      const detail = e.response?.data?.detail;
+      setError(typeof detail === "string" ? detail : "Something went wrong");
+    }
+  };
+
+  const redirect = (userRole: string) => {
+    if (userRole === "company") {
+      router.push("/company/dashboard");
+    } else {
+      router.push("/candidate/dashboard");
     }
   };
 
@@ -68,17 +83,33 @@ export default function LoginPage() {
           {error && <p className="text-red-500 text-sm">{error}</p>}
 
           <Button type="submit" className="w-full" loading={isSubmitting}>
-            {isRegister ? "Create Account" : "Sign In"}
+            {isRegister ? "Create Account & Sign In" : "Sign In"}
           </Button>
         </form>
 
         <p className="text-center text-sm text-gray-500 mt-4">
           {isRegister ? "Already have an account?" : "Don't have an account?"}{" "}
-          <button onClick={() => setIsRegister(!isRegister)}
-            className="text-brand-500 font-medium hover:underline">
+          <button
+            onClick={() => { setIsRegister(!isRegister); setError(""); }}
+            className="text-brand-500 font-medium hover:underline"
+          >
             {isRegister ? "Sign in" : "Register"}
           </button>
         </p>
+
+        {/* Role switcher when registering */}
+        {isRegister && (
+          <div className="mt-4 flex gap-2 justify-center">
+            <a href={`/auth/login?role=candidate`}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${role === "candidate" ? "bg-brand-500 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+              Candidate
+            </a>
+            <a href={`/auth/login?role=company`}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${role === "company" ? "bg-brand-500 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+              Company
+            </a>
+          </div>
+        )}
       </Card>
     </main>
   );
