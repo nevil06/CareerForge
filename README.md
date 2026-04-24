@@ -385,3 +385,5 @@ carrier-forge/
 | Brevo emails not sending | Verify sender email in Brevo dashboard → Senders & IP → Senders |
 | GLM API errors | Check `ZHIPU_API_KEY` in `.env` — get it from [console.zhipuai.cn](https://console.zhipuai.cn) |
 | Tables not created | Make sure `DATABASE_URL` is correct and the `hiring_agent` database exists |
+
+😊
