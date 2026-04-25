@@ -486,3 +486,5 @@ CareerForge/
 | Tables not created                   | Make sure `DATABASE_URL` is correct and the `carrier_forge` database exists            |
 | JSearch returns no results           | Verify `JSEARCH_API_KEY` is set and the RapidAPI subscription is active                |
 | `externally-managed-environment`     | Never use `sudo pip`. Always activate your venv first: `venv\Scripts\activate`         |
+Sentinel hack 6.0
+hackathon project by team I Geuss Bro
