@@ -4,7 +4,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { login, register as registerUser } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
 import Button from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";

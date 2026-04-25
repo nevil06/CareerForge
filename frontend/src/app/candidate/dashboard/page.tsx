@@ -18,24 +18,41 @@ export default function CandidateDashboard() {
   const [matches, setMatches] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [authReady, setAuthReady] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchMsg, setSearchMsg] = useState("");
   const [visited, setVisited] = useState<Record<number, { has_prep: boolean }>>({});
 
-  // Auth guard
+  // Auth guard — wait for Supabase session before deciding to redirect
   useEffect(() => {
-    if (!token && !localStorage.getItem("token")) {
-      router.replace("/auth/login");
-      return;
-    }
-    if (user && user.role === "company") {
-      router.replace("/company/dashboard");
-      return;
-    }
-  }, [token, user, router]);
+    const check = async () => {
+      const { supabase } = await import("@/lib/supabase");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.replace("/auth/login");
+        return;
+      }
+      // Hydrate store if not already done (e.g. hard refresh)
+      if (!token) {
+        const role = session.user?.user_metadata?.role || "candidate";
+        useAuthStore.getState().setAuth(
+          { id: session.user.id, email: session.user.email!, role: role as "candidate" | "company" },
+          session.access_token
+        );
+      }
+      // Wrong role redirect
+      const resolvedRole = session.user?.user_metadata?.role || "candidate";
+      if (resolvedRole === "company") {
+        router.replace("/company/dashboard");
+        return;
+      }
+      setAuthReady(true);
+    };
+    check();
+  }, []); // run once on mount
 
   useEffect(() => {
-    if (!token) return;
+    if (!authReady) return;
     getProfile()
       .then((p) => {
         // 204 means no profile yet
@@ -64,7 +81,7 @@ export default function CandidateDashboard() {
         }
       })
       .finally(() => setLoading(false));
-  }, [router, token]);
+  }, [router, authReady]);
 
   const handleAISearch = async () => {
     setSearching(true);
@@ -87,7 +104,7 @@ export default function CandidateDashboard() {
     ? matches.reduce((a, m) => a + m.score_total, 0) / matches.length
     : 0;
 
-  if (loading) {
+  if (!authReady || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-neo-grey">
         <div className="animate-spin h-12 w-12 border-4 border-neo-black border-t-transparent rounded-full"></div>
