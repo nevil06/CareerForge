@@ -5,6 +5,9 @@ from app.core.database import Base, engine
 from app.api import candidates, jobs, company
 from app.api import learning
 
+# Import all models so Base.metadata knows about every table before create_all
+import app.models.job_interaction  # noqa: F401 — registers JobInteraction table
+
 # Create all tables on startup (including new learning tables)
 Base.metadata.create_all(bind=engine)
 

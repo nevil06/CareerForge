@@ -5,19 +5,207 @@ import { Card, CardTitle } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
-import api from "@/lib/api";
-import { Briefcase, Users, ChevronRight, Sparkles, TrendingUp } from "lucide-react";
+import api, { createJob } from "@/lib/api";
+import { apiErrorMessage } from "@/lib/apiError";
+import {
+  Briefcase, Users, ChevronRight, Sparkles, TrendingUp,
+  Plus, X, MapPin, DollarSign, Star, CheckCircle,
+} from "lucide-react";
 
+// ── Skill tag input ────────────────────────────────────────────────────────
+function SkillInput({ skills, onChange }: { skills: string[]; onChange: (s: string[]) => void }) {
+  const [input, setInput] = useState("");
+  const add = () => {
+    const s = input.trim();
+    if (s && !skills.includes(s)) onChange([...skills, s]);
+    setInput("");
+  };
+  return (
+    <div>
+      <div className="flex flex-wrap gap-1.5 mb-2 min-h-[28px]">
+        {skills.map(s => (
+          <span key={s} className="flex items-center gap-1 bg-yellow-400 border-2 border-neo-black text-xs font-black uppercase px-2 py-0.5">
+            {s}
+            <button onClick={() => onChange(skills.filter(x => x !== s))} className="hover:text-red-600">
+              <X size={10} />
+            </button>
+          </span>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
+          placeholder="e.g. React, Python — press Enter to add"
+          className="flex-1 border-2 border-neo-black px-3 py-2 text-sm font-medium outline-none focus:shadow-[2px_2px_0_#111] transition-shadow"
+        />
+        <button onClick={add} className="border-2 border-neo-black px-3 py-2 font-black text-sm hover:bg-gray-100">
+          + Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Post Job Modal ─────────────────────────────────────────────────────────
+function PostJobModal({ onClose, onPosted }: { onClose: () => void; onPosted: () => void }) {
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    location: "",
+    application_link: "",
+    experience_level: "mid",
+    experience_years_min: 0,
+    salary_min: "",
+    salary_max: "",
+  });
+  const [skills, setSkills] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const set = (key: string, val: any) => setForm(p => ({ ...p, [key]: val }));
+
+  const submit = async () => {
+    if (!form.title.trim()) { setError("Job title is required."); return; }
+    if (skills.length === 0) { setError("Add at least one required skill."); return; }
+    setLoading(true);
+    setError("");
+    try {
+      await createJob({
+        ...form,
+        required_skills: skills,
+        experience_years_min: Number(form.experience_years_min),
+        salary_min: form.salary_min ? Number(form.salary_min) : undefined,
+        salary_max: form.salary_max ? Number(form.salary_max) : undefined,
+      });
+      onPosted();
+      onClose();
+    } catch (e: any) {
+      setError(apiErrorMessage(e, "Failed to post job. Try again."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+      <div className="bg-white border-4 border-neo-black shadow-[8px_8px_0_#111] w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between bg-neo-black text-white p-5 sticky top-0">
+          <div className="flex items-center gap-3">
+            <Briefcase size={20} className="text-yellow-400" />
+            <div>
+              <h2 className="text-lg font-black uppercase">Post a Hiring</h2>
+              <p className="text-xs text-gray-400">Visible to all matching candidates instantly</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-white"><X size={22} /></button>
+        </div>
+
+        <div className="p-6 space-y-5">
+          {/* Title */}
+          <div>
+            <label className="block text-xs font-black uppercase tracking-widest mb-1.5 text-neo-black">Job Title *</label>
+            <input value={form.title} onChange={e => set("title", e.target.value)}
+              placeholder="e.g. Senior Frontend Engineer"
+              className="w-full border-2 border-neo-black px-4 py-2.5 text-sm font-medium outline-none focus:shadow-[2px_2px_0_#111] transition-shadow" />
+          </div>
+
+          {/* Skills */}
+          <div>
+            <label className="block text-xs font-black uppercase tracking-widest mb-1.5 text-neo-black">Required Skills *</label>
+            <SkillInput skills={skills} onChange={setSkills} />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-xs font-black uppercase tracking-widest mb-1.5 text-neo-black">Job Description</label>
+            <textarea rows={4} value={form.description} onChange={e => set("description", e.target.value)}
+              placeholder="Describe the role, responsibilities, team, and what you're looking for..."
+              className="w-full border-2 border-neo-black px-4 py-2.5 text-sm font-medium outline-none resize-none focus:shadow-[2px_2px_0_#111] transition-shadow" />
+          </div>
+
+          {/* Location + Level */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-black uppercase tracking-widest mb-1.5 text-neo-black">Location</label>
+              <input value={form.location} onChange={e => set("location", e.target.value)}
+                placeholder="e.g. Bangalore / Remote"
+                className="w-full border-2 border-neo-black px-4 py-2.5 text-sm font-medium outline-none focus:shadow-[2px_2px_0_#111] transition-shadow" />
+            </div>
+            <div>
+              <label className="block text-xs font-black uppercase tracking-widest mb-1.5 text-neo-black">Experience Level</label>
+              <select value={form.experience_level} onChange={e => set("experience_level", e.target.value)}
+                className="w-full border-2 border-neo-black px-4 py-2.5 text-sm font-medium outline-none bg-white">
+                <option value="intern">Intern</option>
+                <option value="junior">Junior</option>
+                <option value="mid">Mid-level</option>
+                <option value="senior">Senior</option>
+                <option value="lead">Lead / Staff</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Min experience + Salary */}
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-black uppercase tracking-widest mb-1.5 text-neo-black">Min Exp (yrs)</label>
+              <input type="number" min={0} value={form.experience_years_min} onChange={e => set("experience_years_min", e.target.value)}
+                className="w-full border-2 border-neo-black px-4 py-2.5 text-sm font-medium outline-none focus:shadow-[2px_2px_0_#111] transition-shadow" />
+            </div>
+            <div>
+              <label className="block text-xs font-black uppercase tracking-widest mb-1.5 text-neo-black">Salary Min (₹/yr)</label>
+              <input type="number" value={form.salary_min} onChange={e => set("salary_min", e.target.value)}
+                placeholder="e.g. 600000"
+                className="w-full border-2 border-neo-black px-4 py-2.5 text-sm font-medium outline-none focus:shadow-[2px_2px_0_#111] transition-shadow" />
+            </div>
+            <div>
+              <label className="block text-xs font-black uppercase tracking-widest mb-1.5 text-neo-black">Salary Max (₹/yr)</label>
+              <input type="number" value={form.salary_max} onChange={e => set("salary_max", e.target.value)}
+                placeholder="e.g. 1200000"
+                className="w-full border-2 border-neo-black px-4 py-2.5 text-sm font-medium outline-none focus:shadow-[2px_2px_0_#111] transition-shadow" />
+            </div>
+          </div>
+
+          {/* Application link */}
+          <div>
+            <label className="block text-xs font-black uppercase tracking-widest mb-1.5 text-neo-black">Application Link (optional)</label>
+            <input value={form.application_link} onChange={e => set("application_link", e.target.value)}
+              placeholder="https://careers.yourcompany.com/apply/..."
+              className="w-full border-2 border-neo-black px-4 py-2.5 text-sm font-medium outline-none focus:shadow-[2px_2px_0_#111] transition-shadow" />
+          </div>
+
+          {error && (
+            <div className="border-2 border-red-400 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{error}</div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <button onClick={submit} disabled={loading}
+              className="flex-1 flex items-center justify-center gap-2 bg-neo-black text-yellow-400 font-black uppercase py-3.5 border-2 border-neo-black shadow-[4px_4px_0_#facc15] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all disabled:opacity-40">
+              {loading ? "Posting…" : <><CheckCircle size={16} /> Post Hiring</>}
+            </button>
+            <button onClick={onClose} className="px-5 py-3.5 border-2 border-neo-black font-bold hover:bg-gray-100 transition-colors">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main dashboard ─────────────────────────────────────────────────────────
 export default function CompanyDashboard() {
   const [data, setData] = useState<any>(null);
   const [selectedJob, setSelectedJob] = useState<number | null>(null);
   const [matches, setMatches] = useState<any[]>([]);
   const [screening, setScreening] = useState<Record<number, any>>({});
   const [screeningId, setScreeningId] = useState<number | null>(null);
+  const [showPostModal, setShowPostModal] = useState(false);
 
-  useEffect(() => {
+  const load = () =>
     api.get("/api/company/dashboard").then((r) => setData(r.data)).catch(() => {});
-  }, []);
+
+  useEffect(() => { load(); }, []);
 
   const loadMatches = async (jobId: number) => {
     setSelectedJob(jobId);
@@ -46,7 +234,24 @@ export default function CompanyDashboard() {
     <div className="flex min-h-screen">
       <Sidebar />
       <main className="flex-1 p-8 overflow-auto bg-neo-white">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Company Dashboard</h1>
+
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Company Dashboard</h1>
+          <button
+            onClick={() => setShowPostModal(true)}
+            className="flex items-center gap-2 bg-neo-black text-yellow-400 font-black uppercase text-sm px-5 py-2.5 border-2 border-neo-black shadow-[4px_4px_0_#facc15] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all">
+            <Plus size={16} /> Post a Hiring
+          </button>
+        </div>
+
+        {/* Post Job Modal */}
+        {showPostModal && (
+          <PostJobModal
+            onClose={() => setShowPostModal(false)}
+            onPosted={() => { load(); }}
+          />
+        )}
 
         {!data ? (
           <>
@@ -58,12 +263,8 @@ export default function CompanyDashboard() {
               ))}
             </div>
             <div className="grid grid-cols-5 gap-6">
-              <div className="col-span-2">
-                <Skeleton className="h-[400px]" />
-              </div>
-              <div className="col-span-3">
-                <Skeleton className="h-[600px]" />
-              </div>
+              <div className="col-span-2"><Skeleton className="h-[400px]" /></div>
+              <div className="col-span-3"><Skeleton className="h-[600px]" /></div>
             </div>
           </>
         ) : (
@@ -92,31 +293,47 @@ export default function CompanyDashboard() {
             <div className="grid grid-cols-5 gap-6">
               {/* Job list */}
               <Card className="col-span-2">
-                <CardTitle>Your Jobs</CardTitle>
-                <div className="mt-4 space-y-1">
+                <div className="flex items-center justify-between mb-4">
+                  <CardTitle>Your Hirings</CardTitle>
+                  <button onClick={() => setShowPostModal(true)}
+                    className="flex items-center gap-1 text-xs font-black uppercase border-2 border-neo-black px-2.5 py-1.5 hover:bg-yellow-400 transition-colors">
+                    <Plus size={12} /> New
+                  </button>
+                </div>
+                <div className="space-y-1">
                   {data.jobs.map((j: any) => (
                     <button key={j.id} onClick={() => loadMatches(j.id)}
                       className={`w-full flex items-center justify-between px-3 py-2.5 border-2 transition-all ${
-                        selectedJob === j.id ? "bg-neo-black text-neo-white font-bold" : "bg-neo-white border-transparent hover:border-neo-black text-neo-black font-semibold"
+                        selectedJob === j.id ? "bg-neo-black text-neo-white font-bold border-neo-black" : "bg-neo-white border-transparent hover:border-neo-black text-neo-black font-semibold"
                       }`}>
-                      <span className="truncate">{j.title}</span>
-                      <ChevronRight size={15} className="flex-shrink-0" />
+                      <div className="text-left min-w-0">
+                        <p className="truncate text-sm">{j.title}</p>
+                        {j.location && <p className={`text-xs ${selectedJob === j.id ? "text-gray-400" : "text-gray-500"}`}>{j.location}</p>}
+                      </div>
+                      <ChevronRight size={15} className="flex-shrink-0 ml-2" />
                     </button>
                   ))}
                   {data.jobs.length === 0 && (
-                    <p className="text-neo-dark-grey text-sm text-center py-4 font-bold">No jobs posted yet.</p>
+                    <div className="text-center py-8">
+                      <Briefcase size={28} className="mx-auto mb-2 text-gray-300" />
+                      <p className="text-sm font-bold text-gray-400 uppercase">No hirings posted yet</p>
+                      <button onClick={() => setShowPostModal(true)}
+                        className="mt-3 text-xs font-black uppercase underline text-neo-black hover:no-underline">
+                        Post your first hiring →
+                      </button>
+                    </div>
                   )}
                 </div>
-                <Button size="sm" variant="outline" className="w-full mt-4"
-                  onClick={() => window.location.href = "/company/jobs"}>
-                  Manage Jobs
-                </Button>
+                <button onClick={() => window.location.href = "/company/jobs"}
+                  className="mt-4 w-full text-xs font-bold uppercase border-2 border-neo-black px-3 py-2 hover:bg-gray-100 transition-colors">
+                  Manage All Jobs
+                </button>
               </Card>
 
               {/* Candidate matches */}
               <Card className="col-span-3 overflow-auto max-h-[600px]">
                 <CardTitle>
-                  {selectedJob ? "Matched Candidates" : "Select a job to see matches"}
+                  {selectedJob ? "Matched Candidates" : "Select a hiring to see matches"}
                 </CardTitle>
                 <div className="mt-4 space-y-3">
                   {matches.map((m) => {
@@ -147,7 +364,6 @@ export default function CompanyDashboard() {
                           </div>
                         </div>
 
-                        {/* Screening result */}
                         {s && (
                           <div className="mt-3 pt-3 border-t-4 border-neo-black bg-neo-grey p-3">
                             <div className="flex items-center gap-2 mb-2">

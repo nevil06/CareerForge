@@ -6,8 +6,9 @@ import { Card, CardTitle } from "@/components/ui/Card";
 import MatchCard from "@/components/MatchCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import Badge from "@/components/ui/Badge";
-import { getCandidateMatches, getProfile } from "@/lib/api";
+import { getCandidateMatches, getProfile, getVisitedJobs } from "@/lib/api";
 import api from "@/lib/api";
+import { apiErrorMessage } from "@/lib/apiError";
 import { useAuthStore } from "@/lib/store";
 import { Briefcase, Star, TrendingUp, Sparkles, ShieldCheck, AlertCircle } from "lucide-react";
 
@@ -19,6 +20,7 @@ export default function CandidateDashboard() {
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [searchMsg, setSearchMsg] = useState("");
+  const [visited, setVisited] = useState<Record<number, { has_prep: boolean }>>({});
 
   // Auth guard
   useEffect(() => {
@@ -46,6 +48,15 @@ export default function CandidateDashboard() {
       })
       .then((m) => {
         if (m) setMatches(m.data);
+        // Load visited state in parallel
+        return getVisitedJobs();
+      })
+      .then((v) => {
+        if (v) {
+          const map: Record<number, { has_prep: boolean }> = {};
+          (v.data as any[]).forEach(r => { map[r.job_id] = { has_prep: r.has_prep }; });
+          setVisited(map);
+        }
       })
       .catch((e) => {
         if (e === "no_profile" || e.response?.status === 404) {
@@ -65,7 +76,7 @@ export default function CandidateDashboard() {
       const m = await getCandidateMatches();
       setMatches(m.data);
     } catch (e: any) {
-      setSearchMsg("❌ " + (e.response?.data?.detail || "Search failed"));
+      setSearchMsg("❌ " + apiErrorMessage(e, "Search failed"));
     } finally {
       setSearching(false);
     }
@@ -209,7 +220,14 @@ export default function CandidateDashboard() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {matches.map((m) => <MatchCard key={m.id} match={m} />)}
+            {matches.map((m) => (
+              <MatchCard
+                key={m.id}
+                match={m}
+                isVisited={!!visited[m.job_id]}
+                hasPrep={visited[m.job_id]?.has_prep ?? false}
+              />
+            ))}
           </div>
         )}
       </main>

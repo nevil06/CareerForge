@@ -4,6 +4,7 @@ import { AppShell, PageHeader } from "@/components/layout/AppShell";
 import { Card, CardTitle } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { optimizeResume, generateOutreach, generateCoverLetter, getGithubRepos, generateProfessionalResume } from "@/lib/api";
+import { apiErrorMessage } from "@/lib/apiError";
 import {
   Sparkles, Copy, Check, Github, Globe, FileText,
   Loader2, Download, Wand2, Mail, BookOpen, Star,
@@ -90,7 +91,7 @@ export default function AIToolsPage() {
       setGhProfile(r.data);
       setGhRepos(r.data.repos || []);
     } catch (e: any) {
-      setGhError(e.response?.data?.detail || `Could not find GitHub user "${ghUsername}"`);
+      setGhError(apiErrorMessage(e, `Could not find GitHub user "${ghUsername}"`));
     } finally {
       setGhLoading(false);
     }
@@ -112,7 +113,7 @@ export default function AIToolsPage() {
       setProHtml(r.data.html);
       setProMeta(r.data);
     } catch (e: any) {
-      setProError(e.response?.data?.detail || "Resume generation failed. Please try again.");
+      setProError(apiErrorMessage(e, "Resume generation failed. Please try again."));
     } finally {
       setProLoading(false);
     }

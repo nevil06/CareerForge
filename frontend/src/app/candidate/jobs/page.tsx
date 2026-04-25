@@ -4,11 +4,11 @@ import { AppShell, PageHeader } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
-import { listJobs } from "@/lib/api";
+import { listJobs, getVisitedJobs } from "@/lib/api";
 import api from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { MapPin, Building2, ExternalLink, Search, Sparkles, Loader2 } from "lucide-react";
+import { MapPin, Building2, ExternalLink, Search, Sparkles, Loader2, Eye, Zap } from "lucide-react";
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<any[]>([]);
@@ -16,6 +16,8 @@ export default function JobsPage() {
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchMsg, setSearchMsg] = useState("");
+  // visited: Map<jobId, {has_prep: boolean}>
+  const [visited, setVisited] = useState<Record<number, {has_prep: boolean}>>({});
 
   const fetchJobs = async (query = "") => {
     setLoading(true);
@@ -43,6 +45,12 @@ export default function JobsPage() {
       });
     });
     fetchJobs();
+    // Load visited state
+    getVisitedJobs().then(r => {
+      const map: Record<number, {has_prep: boolean}> = {};
+      (r.data as any[]).forEach(v => { map[v.job_id] = { has_prep: v.has_prep }; });
+      setVisited(map);
+    }).catch(() => {});
   }, [token]);
 
   const handleSearch = () => fetchJobs(q);
@@ -135,13 +143,30 @@ export default function JobsPage() {
           <>
             <p className="mb-4 text-sm font-bold text-stone-500">{jobs.length} jobs found</p>
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {jobs.map((job) => (
-                <Card key={job.id} className="group flex flex-col h-full overflow-hidden transition-all hover:-translate-y-1 hover:shadow-leaf">
+              {jobs.map((job) => {
+                const isVisited = !!visited[job.id];
+                const hasPrep  = visited[job.id]?.has_prep;
+                return (
+                <Card key={job.id} className={`group flex flex-col h-full overflow-hidden transition-all hover:-translate-y-1 hover:shadow-leaf ${
+                  isVisited ? "border-green-500" : ""
+                }`}>
                   <div className="flex items-start justify-between mb-2">
                     <h4 className="font-display text-xl font-bold leading-tight text-soil pr-2">{job.title}</h4>
-                    <Badge variant={job.source === "external" ? "warning" : "default"} className="flex-shrink-0">
-                      {job.source}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-1">
+                      <Badge variant={job.source === "external" ? "warning" : "default"} className="flex-shrink-0">
+                        {job.source}
+                      </Badge>
+                      {isVisited && (
+                        <span className="flex items-center gap-1 text-[10px] font-black uppercase text-green-700 bg-green-100 border border-green-400 px-1.5 py-0.5">
+                          <Eye size={9} /> Viewed
+                        </span>
+                      )}
+                      {hasPrep && (
+                        <span className="flex items-center gap-1 text-[10px] font-black uppercase text-yellow-800 bg-yellow-100 border border-yellow-400 px-1.5 py-0.5">
+                          <Zap size={9} /> Prep Ready
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-stone-500">
@@ -184,7 +209,8 @@ export default function JobsPage() {
                     )}
                   </div>
                 </Card>
-              ))}
+              );
+              })}
             </div>
           </>
         )}

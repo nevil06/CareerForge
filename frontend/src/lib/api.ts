@@ -62,3 +62,17 @@ export const generateProfessionalResume = (data: {
   company_name?: string;
   job_description?: string;
 }) => api.post("/api/candidates/resume/build-professional", data);
+
+// ---- Job Action Hub ----
+export const getInterviewPrep = (jobId: number) =>
+  api.post(`/api/candidates/interview-prep/${jobId}`);
+
+export const generateApplicationPackage = (jobId: number) =>
+  api.post(`/api/candidates/apply/${jobId}`);
+
+export const markJobVisited = (jobId: number) =>
+  api.post(`/api/candidates/jobs/${jobId}/visit`);
+
+export const getVisitedJobs = () =>
+  api.get("/api/candidates/jobs/visited");
+

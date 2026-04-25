@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
 from fastapi.responses import Response
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.deps import require_candidate, get_current_user
@@ -360,37 +361,62 @@ def cover_letter(payload: CoverLetterRequest,
 # AI Application Package  (resume + email + cover letter in one shot)
 # ---------------------------------------------------------------------------
 
+class ApplyPayload(BaseModel):
+    github_username: str = ""
+    portfolio_url: str = ""
+
+    class Config:
+        extra = "allow"
+
+
 @router.post("/apply/{job_id}")
 async def generate_apply_package(
     job_id: int,
-    payload: dict,
+    payload: ApplyPayload = ApplyPayload(),
     user: User = Depends(require_candidate),
     db: Session = Depends(get_db),
 ):
     """
-    Generates the full application package for a job:
-      1. Fetches GitHub repos (if github_username provided)
-      2. Generates: match analysis + cold email + cover letter (one GLM call)
-      3. Generates: professional HTML resume (second GLM call, parallel)
-    Returns all four artefacts in one response.
+    Generate application package for a job.
+    - With no body (or empty body): generates cold email + cover letter via application_agent
+    - With github_username: also fetches repos and generates HTML resume
     """
-    from app.services.ai_service import (
-        fetch_github_enrichment, generate_application_package,
-        generate_professional_html_resume
-    )
     from app.models.job import Job
-    import asyncio
+    from app.services.application_agent import generate_full_application_package
 
     profile_obj = _get_or_404(user, db)
-
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
         raise HTTPException(404, "Job not found")
 
-    github_username = (payload.get("github_username") or "").strip()
-    portfolio_url   = (payload.get("portfolio_url") or "").strip()
+    github_username = (payload.github_username or "").strip()
 
-    # Build profile dict
+    # Simple path — no GitHub, just cold email + cover letter
+    if not github_username:
+        result = generate_full_application_package(profile_obj, job)
+        return {
+            "cold_email":   result.get("cold_email", ""),
+            "cover_letter": result.get("cover_letter", ""),
+            "summary":      result.get("summary", {}),
+        }
+
+    # Full path — with GitHub enrichment + HTML resume
+    from app.services.ai_service import (
+        fetch_github_enrichment, generate_application_package,
+        generate_professional_html_resume, fetch_portfolio_content,
+    )
+    import asyncio, concurrent.futures
+
+    portfolio_url = (payload.portfolio_url or "").strip()
+
+    async def _empty_dict(): return {}
+    async def _empty_str():  return ""
+
+    github_data, portfolio_text = await asyncio.gather(
+        fetch_github_enrichment(github_username),
+        fetch_portfolio_content(portfolio_url) if portfolio_url else _empty_str(),
+    )
+
     profile_dict = {
         "full_name":        profile_obj.full_name,
         "email":            getattr(user, "email", ""),
@@ -403,7 +429,6 @@ async def generate_apply_package(
         "experiences":      profile_obj.experiences or [],
         "education":        profile_obj.education or [],
     }
-
     job_dict = {
         "title":        job.title,
         "company_name": job.company_name,
@@ -411,46 +436,25 @@ async def generate_apply_package(
         "description":  job.description or "",
     }
 
-    # Fetch GitHub enrichment if username provided
-    async def _empty_dict(): return {}
-    async def _empty_str():  return ""
-
-    from app.services.ai_service import fetch_portfolio_content
-    github_data, portfolio_text = await asyncio.gather(
-        fetch_github_enrichment(github_username) if github_username else _empty_dict(),
-        fetch_portfolio_content(portfolio_url) if portfolio_url else _empty_str(),
-    )
-
-    # Run both GLM calls concurrently (text package + HTML resume)
-    import concurrent.futures, functools
-
-    def _gen_package():
-        return generate_application_package(profile_dict, job_dict, github_data)
-
-    def _gen_resume():
-        return generate_professional_html_resume(
-            profile=profile_dict,
-            github_data=github_data,
-            portfolio_text=portfolio_text,
-            job_description=job_dict["description"],
-            job_title=job_dict["title"],
-            company_name=job_dict["company_name"],
-        )
-
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-        pkg_future    = loop.run_in_executor(pool, _gen_package)
-        resume_future = loop.run_in_executor(pool, _gen_resume)
+        pkg_future    = loop.run_in_executor(pool, lambda: generate_application_package(profile_dict, job_dict, github_data))
+        resume_future = loop.run_in_executor(pool, lambda: generate_professional_html_resume(
+            profile=profile_dict, github_data=github_data, portfolio_text=portfolio_text,
+            job_description=job_dict["description"], job_title=job_dict["title"],
+            company_name=job_dict["company_name"],
+        ))
         pkg, resume_html = await asyncio.gather(pkg_future, resume_future)
 
     return {
-        "summary":       pkg.get("summary", {}),
-        "cold_email":    pkg.get("cold_email", ""),
-        "cover_letter":  pkg.get("cover_letter", ""),
-        "resume_html":   resume_html,
+        "cold_email":      pkg.get("cold_email", ""),
+        "cover_letter":    pkg.get("cover_letter", ""),
+        "summary":         pkg.get("summary", {}),
+        "resume_html":     resume_html,
         "github_enriched": bool(github_data),
         "repos_used":      len(github_data.get("repos", [])),
     }
+
 
 # ---------------------------------------------------------------------------
 # AI Job Search Agent
@@ -496,6 +500,116 @@ def get_notifications(user: User = Depends(require_candidate), db: Session = Dep
     return db.query(Notification).filter_by(user_id=user.id).order_by(
         Notification.created_at.desc()
     ).limit(30).all()
+
+
+# ---------------------------------------------------------------------------
+# Interview Preparation (AI-generated, cached in DB)
+# ---------------------------------------------------------------------------
+
+@router.post("/interview-prep/{job_id}")
+def get_interview_prep(
+    job_id: int,
+    user: User = Depends(require_candidate),
+    db: Session = Depends(get_db),
+):
+    """
+    Generate AI-powered interview prep guide for a specific job.
+    Returns cached result if already generated; otherwise generates and caches it.
+    """
+    from app.services.interview_prep import generate_interview_prep
+    from app.models.job import Job
+    from app.models.job_interaction import JobInteraction
+    from sqlalchemy.dialects.mysql import insert as mysql_insert
+    from datetime import datetime, timezone
+
+    job = db.query(Job).filter_by(id=job_id, is_active=True).first()
+    if not job:
+        raise HTTPException(404, "Job not found")
+
+    # Check cache
+    interaction = db.query(JobInteraction).filter_by(
+        user_id=user.id, job_id=job_id
+    ).first()
+
+    if interaction and interaction.interview_prep:
+        return {**interaction.interview_prep, "_cached": True}
+
+    # Generate fresh
+    try:
+        prep = generate_interview_prep(
+            job_title=job.title,
+            company_name=job.company_name,
+            job_description=job.description or "",
+            required_skills=job.required_skills or [],
+        )
+    except Exception as e:
+        print(f"[interview-prep] Generation failed: {e}")
+        raise HTTPException(500, f"Interview prep generation failed: {str(e)}")
+
+    # Upsert into job_interactions
+    now = datetime.now(timezone.utc)
+    if interaction:
+        interaction.interview_prep = prep
+        interaction.prep_generated_at = now
+    else:
+        interaction = JobInteraction(
+            user_id=user.id,
+            job_id=job_id,
+            interview_prep=prep,
+            prep_generated_at=now,
+        )
+        db.add(interaction)
+    db.commit()
+
+    return {**prep, "_cached": False}
+
+
+# ---------------------------------------------------------------------------
+# Job visit tracking
+# ---------------------------------------------------------------------------
+
+@router.post("/jobs/{job_id}/visit", status_code=200)
+def mark_job_visited(
+    job_id: int,
+    user: User = Depends(require_candidate),
+    db: Session = Depends(get_db),
+):
+    """Mark a job as visited by this candidate. Idempotent."""
+    from app.models.job_interaction import JobInteraction
+    from app.models.job import Job
+
+    job = db.query(Job).filter_by(id=job_id, is_active=True).first()
+    if not job:
+        raise HTTPException(404, "Job not found")
+
+    interaction = db.query(JobInteraction).filter_by(
+        user_id=user.id, job_id=job_id
+    ).first()
+
+    if not interaction:
+        interaction = JobInteraction(user_id=user.id, job_id=job_id)
+        db.add(interaction)
+        db.commit()
+
+    return {"visited": True, "job_id": job_id}
+
+
+@router.get("/jobs/visited")
+def get_visited_jobs(
+    user: User = Depends(require_candidate),
+    db: Session = Depends(get_db),
+):
+    """Return all job IDs this candidate has visited."""
+    from app.models.job_interaction import JobInteraction
+
+    rows = db.query(JobInteraction.job_id, JobInteraction.prep_generated_at).filter_by(
+        user_id=user.id
+    ).all()
+
+    return [
+        {"job_id": r.job_id, "has_prep": r.prep_generated_at is not None}
+        for r in rows
+    ]
 
 
 @router.post("/apply/{job_id}")

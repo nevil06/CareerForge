@@ -50,17 +50,18 @@ function LoginContent() {
     setSuccess("");
     try {
       const { supabase } = await import("@/lib/supabase");
-      
+
+      let session: any = null;
       let actualRole = role;
+
       if (isRegister) {
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: data.email,
           password: data.password,
-          options: {
-            data: { role },
-          },
+          options: { data: { role } },
         });
         if (signUpError) throw signUpError;
+        session = signUpData.session;
         setSuccess("Account created! Redirecting to your dashboard…");
         await new Promise((r) => setTimeout(r, 800));
       } else {
@@ -69,8 +70,7 @@ function LoginContent() {
           password: data.password,
         });
         if (signInError) throw signInError;
-        
-        // Let the store's onAuthStateChange handle syncing, but we can do local role checking
+        session = signInData.session;
         actualRole = signInData.user?.user_metadata?.role || "candidate";
         if (actualRole !== role) {
           setSuccess(`Signed in as ${actualRole}. Redirecting to your dashboard…`);
@@ -78,15 +78,33 @@ function LoginContent() {
         }
       }
 
-      let path = actualRole === "company" ? "/company/dashboard" : "/candidate/dashboard";
-      if (isRegister && actualRole === "candidate") {
-        path = "/candidate/profile";
+      // Explicitly hydrate the store NOW — don't wait for onAuthStateChange
+      // which may fire after the dashboard has already mounted as "guest"
+      if (session) {
+        actualRole = session.user?.user_metadata?.role || actualRole;
+        setAuth(
+          {
+            id: session.user.id,
+            email: session.user.email!,
+            role: actualRole as "candidate" | "company",
+          },
+          session.access_token
+        );
       }
+
+      const path =
+        isRegister && actualRole === "candidate"
+          ? "/candidate/profile"
+          : actualRole === "company"
+          ? "/company/dashboard"
+          : "/candidate/dashboard";
+
       router.push(path);
     } catch (e: any) {
       setError(e.message || "Authentication failed. Please check your credentials.");
     }
   };
+
 
   const toggleMode = () => {
     setIsRegister(!isRegister);

@@ -707,8 +707,8 @@ export default function ProfilePage() {
         )}
 
 
-        {/* Resume Upload */}
-        {(!profile || isEditing) && (
+        {/* Resume Upload — only shown when no profile exists yet */}
+        {!profile && (
           <Card className="mb-6">
             <div className="flex items-center gap-2 mb-4">
               <FileText size={18} className="text-neo-black" />
